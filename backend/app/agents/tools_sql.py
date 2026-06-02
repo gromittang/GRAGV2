@@ -57,6 +57,16 @@ class SchemaSearchTool(BaseTool):
         except Exception as e:
             return json.dumps({"error": str(e)}, ensure_ascii=False)
 
+    async def _arun(self, query: str) -> str:
+        """异步执行Schema搜索"""
+        if self._schema_manager is None:
+            return json.dumps({"error": "Schema管理器未初始化"}, ensure_ascii=False)
+        try:
+            result = await self._schema_manager.search_relevant_schema(query)
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+
 
 class SQLGenerateInput(BaseModel):
     """SQL生成输入"""
@@ -96,6 +106,25 @@ class SQLGenerateTool(BaseTool):
         except Exception as e:
             return json.dumps({"error": str(e)}, ensure_ascii=False)
 
+    async def _arun(self, question: str, schema_context: str) -> str:
+        """异步执行SQL生成"""
+        prompt = SQL_GENERATION_PROMPT.format(
+            schema_context=schema_context,
+            user_question=question
+        )
+
+        try:
+            response = await self._llm.ainvoke(prompt)
+            content = response.content if hasattr(response, 'content') else str(response)
+
+            # 提取JSON
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if json_match:
+                return json_match.group(0)
+            return json.dumps({"error": "无法解析LLM输出", "raw": content}, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+
 
 class SQLValidateInput(BaseModel):
     """SQL校验输入"""
@@ -111,16 +140,20 @@ class SQLValidateTool(BaseTool):
 
     def _run(self, sql: str) -> str:
         """执行SQL校验"""
+        if not sql or not isinstance(sql, str):
+            return json.dumps({"valid": False, "reason": "SQL语句不能为空"}, ensure_ascii=False)
+
         sql_lower = sql.lower().strip()
 
-        # 检查禁止关键词
-        for kw in FORBIDDEN_KEYWORDS:
-            if kw in sql_lower:
-                return json.dumps({
-                    "valid": False,
-                    "reason": f"禁止使用 {kw.upper()} 操作",
-                    "sql": sql
-                }, ensure_ascii=False)
+        # 使用正则匹配独立单词
+        pattern = re.compile(r'\b(' + '|'.join(FORBIDDEN_KEYWORDS) + r')\b', re.IGNORECASE)
+        match = pattern.search(sql)
+        if match:
+            return json.dumps({
+                "valid": False,
+                "reason": f"禁止使用 {match.group().upper()} 操作",
+                "sql": sql
+            }, ensure_ascii=False)
 
         # 必须是SELECT
         if not sql_lower.startswith("select"):
@@ -148,6 +181,10 @@ class SQLValidateTool(BaseTool):
             "sql": sql,
             "reason": "校验通过"
         }, ensure_ascii=False)
+
+    async def _arun(self, sql: str) -> str:
+        """异步执行SQL校验"""
+        return self._run(sql)
 
 
 class SQLExecuteInput(BaseModel):
@@ -185,6 +222,16 @@ class SQLExecuteTool(BaseTool):
                     result = future.result()
             else:
                 result = loop.run_until_complete(self._mysql_manager.execute(sql))
+            return json.dumps(result, ensure_ascii=False)
+        except Exception as e:
+            return json.dumps({"error": str(e)}, ensure_ascii=False)
+
+    async def _arun(self, sql: str) -> str:
+        """异步执行SQL"""
+        if self._mysql_manager is None:
+            return json.dumps({"error": "MySQL管理器未初始化"}, ensure_ascii=False)
+        try:
+            result = await self._mysql_manager.execute(sql)
             return json.dumps(result, ensure_ascii=False)
         except Exception as e:
             return json.dumps({"error": str(e)}, ensure_ascii=False)
