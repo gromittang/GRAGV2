@@ -20,7 +20,7 @@ class SchemaManager:
         self._schema_embeddings: List[np.ndarray] = []
         self._initialized: bool = False
 
-    async def load_schema_from_db(self) -> Dict:
+    async def load_schema_from_db(self) -> Dict[str, Any]:
         """从数据库加载Schema"""
         mysql = await get_mysql_manager()
         self._schema_cache = await mysql.get_full_schema()
@@ -63,7 +63,7 @@ class SchemaManager:
             print(f"[SchemaManager] 索引构建失败: {e}")
             self._initialized = False
 
-    async def search_relevant_schema(self, query: str, top_k: int = 5) -> Dict:
+    async def search_relevant_schema(self, query: str, top_k: int = 5) -> Dict[str, Any]:
         """语义搜索相关Schema"""
         if not self._initialized:
             await self.build_embedding_index()
@@ -114,7 +114,7 @@ class SchemaManager:
             "schema_text": self._format_schema_context(schema_context)
         }
 
-    def _format_schema_context(self, schema: Dict) -> str:
+    def _format_schema_context(self, schema: Dict[str, Any]) -> str:
         """格式化schema为Prompt用的文本"""
         lines = []
         for table_name, info in schema.items():
@@ -129,7 +129,7 @@ class SchemaManager:
         self._schema_cache = {}
         await self.build_embedding_index()
 
-    def get_all_tables(self) -> List[Dict]:
+    def get_all_tables(self) -> List[Dict[str, Any]]:
         """获取所有表列表"""
         return [
             {
