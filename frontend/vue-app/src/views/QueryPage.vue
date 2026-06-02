@@ -42,13 +42,19 @@
             >{{ typeof row === 'object' ? JSON.stringify(row).slice(0, 120) : row }}</div>
           </div>
         </div>
+        <!-- 查询历史 -->
+        <QueryHistory
+          :history="store.history"
+          @select="store.executeQueryWithInsight($event.question)"
+          @clear="store.clearHistoryData()"
+        />
       </aside>
 
       <!-- Main query area -->
       <div class="flex-1 overflow-y-auto">
         <div class="max-w-4xl mx-auto p-8 space-y-5">
           <!-- Query Input -->
-          <QueryInput :loading="store.loading" @query="store.executeQuery($event)" />
+          <QueryInput :loading="store.loading" @query="store.executeQueryWithInsight($event)" />
 
           <!-- Error -->
           <div v-if="store.error" class="border border-red-200 bg-red-50 p-4">
@@ -73,6 +79,12 @@
             :total-count="store.totalCount"
           />
 
+          <!-- AI分析卡片 -->
+          <InsightCard
+            :insight="store.insight"
+            @followUp="store.handleFollowUp($event)"
+          />
+
           <!-- Empty state -->
           <div v-if="!store.loading && !store.hasResults && !store.sql" class="py-20 text-center">
             <Icon icon="lucide:search" class="text-5xl text-grid mb-4 mx-auto" />
@@ -94,11 +106,14 @@ import SqlDisplay from '../components/query/SqlDisplay.vue'
 import ResultTable from '../components/query/ResultTable.vue'
 import SchemaBrowser from '../components/query/SchemaBrowser.vue'
 import ExportButton from '../components/query/ExportButton.vue'
+import InsightCard from '../components/query/InsightCard.vue'
+import QueryHistory from '../components/query/QueryHistory.vue'
 
 const store = useQueryStore()
 
 onMounted(() => {
   store.fetchSchema()
   store.testConnection()
+  store.loadHistory()
 })
 </script>
