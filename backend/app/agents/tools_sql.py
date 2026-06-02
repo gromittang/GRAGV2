@@ -37,6 +37,8 @@ class SchemaSearchTool(BaseTool):
 
     def _run(self, query: str) -> str:
         """执行Schema搜索"""
+        if not query or not isinstance(query, str):
+            return json.dumps({"error": "查询不能为空"}, ensure_ascii=False)
         if self._schema_manager is None:
             return json.dumps({"error": "Schema管理器未初始化"}, ensure_ascii=False)
 
@@ -89,6 +91,10 @@ class SQLGenerateTool(BaseTool):
 
     def _run(self, question: str, schema_context: str) -> str:
         """执行SQL生成"""
+        if not question or not isinstance(question, str):
+            return json.dumps({"error": "问题不能为空"}, ensure_ascii=False)
+        if not schema_context:
+            return json.dumps({"error": "Schema上下文不能为空"}, ensure_ascii=False)
         prompt = SQL_GENERATION_PROMPT.format(
             schema_context=schema_context,
             user_question=question
@@ -207,6 +213,8 @@ class SQLExecuteTool(BaseTool):
 
     def _run(self, sql: str) -> str:
         """执行SQL"""
+        if not sql or not isinstance(sql, str):
+            return json.dumps({"error": "SQL语句不能为空"}, ensure_ascii=False)
         if self._mysql_manager is None:
             return json.dumps({"error": "MySQL管理器未初始化"}, ensure_ascii=False)
 
