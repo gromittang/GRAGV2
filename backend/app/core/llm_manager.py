@@ -4,6 +4,7 @@ LLM 管理
 """
 from langchain_core.language_models import BaseLLM
 from langchain_openai import ChatOpenAI
+from langchain_core.outputs import LLMResult, Generation
 from typing import Optional, Dict, Any, List
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 import httpx
@@ -37,13 +38,13 @@ class DeepSeekLLM(BaseLLM):
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
         **kwargs: Any,
-    ) -> List[str]:
+    ) -> LLMResult:
         """生成响应"""
-        results = []
+        generations = []
         for prompt in prompts:
             response = self._call_api(prompt)
-            results.append(response)
-        return results
+            generations.append([Generation(text=response)])
+        return LLMResult(generations=generations)
 
     def _call_api(self, prompt: str) -> str:
         """调用 DeepSeek API"""

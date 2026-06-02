@@ -70,12 +70,13 @@ class SchemaManager:
 
         # 计算query embedding
         embedding_model = get_default_embedding()
-        query_embedding = embedding_model.get_text_embedding(query)
+        query_embedding = np.array(embedding_model.get_text_embedding(query))
 
         # 计算相似度（余弦相似度）
         similarities = []
         for i, emb in enumerate(self._schema_embeddings):
-            sim = np.dot(query_embedding, emb) / (np.linalg.norm(query_embedding) * np.linalg.norm(emb) + 1e-8)
+            emb_array = np.array(emb)
+            sim = np.dot(query_embedding, emb_array) / (np.linalg.norm(query_embedding) * np.linalg.norm(emb_array) + 1e-8)
             similarities.append((i, sim))
 
         # 排序取top_k

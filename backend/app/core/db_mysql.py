@@ -99,12 +99,12 @@ class MySQLManager:
         """从tfrmdataobj读取表信息"""
         sql = """
         SELECT
-            objcode as table_name,
-            objname as display_name,
-            objdesc as description
+            DataObjCode as table_name,
+            DataObjName as display_name,
+            ObjDesc as description
         FROM tfrmdataobj
-        WHERE objtype = 'TABLE'
-        ORDER BY objcode
+        WHERE DataObjType = '0'
+        ORDER BY DataObjCode
         """
         result = await self.execute(sql)
         return result.get("rows", [])
@@ -114,28 +114,28 @@ class MySQLManager:
         if table_name:
             sql = """
             SELECT
-                propcode as column_name,
-                propname as display_name,
-                datatype as data_type,
-                datalength as data_length,
-                propdesc as description,
-                objcode as table_name
+                FieldName as column_name,
+                FieldDesc as display_name,
+                DataType as data_type,
+                DataWidth as data_length,
+                DataDec as description,
+                DataObjCode as table_name
             FROM tfrmdataprop
-            WHERE objcode = %s
-            ORDER BY propcode
+            WHERE DataObjCode = %s
+            ORDER BY FieldIndex
             """
             result = await self.execute(sql, [table_name])
         else:
             sql = """
             SELECT
-                propcode as column_name,
-                propname as display_name,
-                datatype as data_type,
-                datalength as data_length,
-                propdesc as description,
-                objcode as table_name
+                FieldName as column_name,
+                FieldDesc as display_name,
+                DataType as data_type,
+                DataWidth as data_length,
+                DataDec as description,
+                DataObjCode as table_name
             FROM tfrmdataprop
-            ORDER BY objcode, propcode
+            ORDER BY DataObjCode, FieldIndex
             """
             result = await self.execute(sql)
         return result.get("rows", [])

@@ -122,5 +122,30 @@ async def set_favorite(history_id: int, favorite: bool = True) -> bool:
 
 
 def init_query_history():
-    """初始化查询历史（同步入口）"""
-    asyncio.get_event_loop().run_until_complete(init_history_db())
+    """初始化查询历史（同步入口，用于lifespan）"""
+    import sqlite3
+    os.makedirs(_settings.data_dir, exist_ok=True)
+
+    conn = sqlite3.connect(HISTORY_DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS query_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            question TEXT NOT NULL,
+            sql TEXT NOT NULL,
+            result_count INTEGER DEFAULT 0,
+            insight TEXT,
+            tables_used TEXT,
+            favorite INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_session_id ON query_history(session_id)
+    """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_created_at ON query_history(created_at)
+    """)
+    conn.commit()
+    conn.close()
