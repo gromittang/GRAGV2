@@ -1,6 +1,6 @@
 # WMS RAG V2 - 知识库智能问答系统
 
-基于 LlamaIndex RAG + FastAPI + Vue 3 的企业知识库管理系统，支持多行业配置、知识库隔离、PM方案工作室等功能。
+基于 LlamaIndex RAG + FastAPI + Vue 3 的企业知识库管理系统，支持多行业配置、知识库隔离、PM方案工作室、Data Copilot等功能。
 
 ## 功能特性
 
@@ -10,6 +10,22 @@
 - **智能问答** - RAG检索增强生成，支持多轮对话
 - **知识库隔离** - 严格按knowledge_id隔离检索，防止跨行业污染
 - **SSE流式输出** - 实时显示AI生成内容
+
+### Data Copilot（数据智能助手）
+
+企业级 NL2SQL 数据查询模块，让仓库人员直接用自然语言查询业务数据：
+
+```
+自然语言问题 → Schema检索 → SQL生成 → 安全校验 → 执行 → AI分析
+```
+
+**核心特性：**
+- **三层NL2SQL架构** - Schema Retriever → SQL Generator → SQL Validator
+- **Schema Embedding索引** - 语义匹配相关表/字段，从7900+字段中精准定位
+- **SQL安全校验** - 禁止DELETE/DROP/UPDATE，强制LIMIT，禁止SELECT *
+- **AI Insight生成** - 自动分析查询结果，提供业务洞察和建议行动
+- **查询历史记录** - SQLite存储查询历史，支持收藏和复用
+- **追问建议** - 每次查询后推荐相关追问问题
 
 ### PM方案工作室
 
@@ -32,10 +48,11 @@ PM方案工作室是一个智能方案设计工作流，帮助PM基于知识库�
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | FastAPI + LlamaIndex + ChromaDB + SQLite |
+| 后端 | FastAPI + LlamaIndex + LangChain + ChromaDB + SQLite + MySQL |
 | 前端 | Vue 3 + Pinia + Vite + TailwindCSS |
 | LLM | DeepSeek API（支持OpenAI/Claude扩展） |
-| Embedding | BAAI/bge-small-zh-v1.5 |
+| Embedding | BAAI/bge-small-zh-v1.5（本地部署） |
+| 数据查询 | aiomysql + Schema Embedding + NL2SQL |
 
 ## 项目结构
 
@@ -48,38 +65,63 @@ WMSRAGV2/
 │   │   ├── api/
 │   │   │   ├── pm_solution.py   # PM方案工作室API
 │   │   │   ├── documents.py     # 文档管理API
-│   │   │   └── chat.py          # 对话问答API
+│   │   │   ├── chat.py          # 对话问答API
+│   │   │   └── query.py         # 数据查询API (NL2SQL)
+│   │   ├── agents/
+│   │   │   ├── query_agent.py   # Data Copilot Agent
+│   │   │   ├── tools_sql.py     # SQL工具集
+│   │   │   └── prompts_sql.py   # NL2SQL提示模板
 │   │   ├── models/
 │   │   │   ├── document.py      # 文档数据模型
-│   │   │   └ pm_solution.py    # PM方案数据模型
+│   │   │   ├── pm_solution.py   # PM方案数据模型
+│   │   │   └── query_history.py # 查询历史模型
 │   │   ├── services/
 │   │   │   ├── rag_service.py   # RAG服务
 │   │   │   ├── pm_solution_service.py  # PM方案服务
-│   │   │   └ index_builder.py  # 索引构建
-│   │   │   └ document_processor.py  # 文档处理
-│   │   │   └ retriever.py      # 混合检索器
+│   │   │   ├── query_service.py # 数据查询服务
+│   │   │   ├── index_builder.py # 索引构建
+│   │   │   ├── document_processor.py  # 文档处理
+│   │   │   └── retriever.py     # 混合检索器
 │   │   ├── core/
 │   │   │   ├── vector_store.py  # ChromaDB配置
 │   │   │   ├── embedding.py     # Embedding配置
 │   │   │   ├── settings.py      # 行业配置
+│   │   │   ├── db_mysql.py      # MySQL连接池管理
+│   │   │   ├── schema_manager.py # Schema Embedding索引
+│   │   │   └── llm_manager.py   # LLM管理
 │   │   └ data/
 │   │       ├── chroma/          # 向量存储
 │   │       ├── kb.db            # SQLite数据库
+│   │       ├── query_history.db # 查询历史数据库
 │   │       └ uploads/          # 上传文件
 │   ├── requirements.txt
 │   └ requirements-docker.txt    # Docker精简版
+│   └── .env                     # 环境配置
 ├── frontend/vue-app/
 │   ├── src/
 │   │   ├── views/
 │   │   │   ├── PMStudioPage.vue  # PM方案工作室页面
 │   │   │   ├── KnowledgeBase.vue # 知识库管理页面
+│   │   │   └── QueryPage.vue     # 数据查询页面
+│   │   ├── components/
+│   │   │   ├── query/
+│   │   │   │   ├── InsightCard.vue    # AI分析卡片
+│   │   │   │   ├── QueryHistory.vue   # 查询历史侧边栏
+│   │   │   │   └ QueryInput.vue       # 自然语言输入
+│   │   │   │   └ ResultTable.vue      # 结果表格
+│   │   │   │   └ SchemaBrowser.vue    # Schema浏览
 │   │   ├── api/
 │   │   │   ├── pmSolution.js    # PM方案API
 │   │   │   ├── documentsV2.js   # 文档API
+│   │   │   ├── query.js         # 数据查询API
 │   │   ├── stores/
 │   │   │   ├── knowledge.js     # 知识库状态
+│   │   │   ├── query.js         # 数据查询状态
 │   ├── package.json
 │   └ vite.config.js
+├── docs/                        # GitHub Pages文档
+│   ├── index.html               # 项目主页
+│   └── style.css                # 样式文件
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .env.example
@@ -94,8 +136,13 @@ WMSRAGV2/
 # 复制环境模板
 cp .env.example .env
 
-# 编辑.env，配置API密钥
+# 编辑.env，配置API密钥和数据库连接
 DEEPSEEK_API_KEY=your_api_key_here
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=wms
 ```
 
 ### 2. 后端启动
@@ -123,6 +170,19 @@ docker-compose up -d
 ```
 
 ## API端点
+
+### 数据查询 (Data Copilot)
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| POST | `/api/v1/query/` | 自然语言查询（NL→SQL→结果→Insight） |
+| POST | `/api/v1/query/execute` | 直接执行SQL（带安全校验） |
+| GET | `/api/v1/query/schema` | 获取数据库Schema |
+| GET | `/api/v1/query/test-connection` | 测试MySQL连接 |
+| GET | `/api/v1/query/preview/{table}` | 预览表数据 |
+| POST | `/api/v1/query/insight` | 为结果生成AI分析 |
+| GET | `/api/v1/query/history/{session}` | 获取会话历史 |
+| GET | `/api/v1/query/history/all` | 获取所有历史 |
 
 ### PM方案工作室
 
@@ -176,6 +236,37 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
 DEEPSEEK_MODEL=deepseek-chat
 ```
 
+### MySQL配置（数据查询）
+
+```env
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=wms
+```
+
+## Data Copilot 使用示例
+
+### 自然语言查询
+
+```bash
+# 查询示例
+curl -X POST http://localhost:8812/api/v1/query/ \
+  -H "Content-Type: application/json" \
+  -d '{"question": "查询最近5条入库单数据"}'
+
+# 返回结果包含：SQL、数据、AI分析、追问建议
+```
+
+### 前端界面
+
+1. **Schema浏览器** - 查看数据库表结构和字段说明
+2. **自然语言输入** - 直接输入问题，系统自动生成SQL
+3. **结果表格** - 展示查询结果数据
+4. **AI分析卡片** - 显示关键结论、异常点、建议行动
+5. **追问按钮** - 点击推荐问题继续深入查询
+
 ## PM方案工作室使用流程
 
 1. **选择知识库** - 选择要参考的行业文档库
@@ -193,6 +284,7 @@ DEEPSEEK_MODEL=deepseek-chat
 [时间戳] [PM-API] 消息 (耗时: ms)
 [时间戳] [PM-RETRIEVE] 检索完成 (耗时: ms)
 [时间戳] [PM-LLM] 收到第一个token! (耗时: ms)
+[时间戳] [SchemaManager] 索引构建完成: 7904 条
 ```
 
 **前端日志位置：** 浏览器Console (F12)
@@ -205,6 +297,11 @@ DEEPSEEK_MODEL=deepseek-chat
 ## 版本历史
 
 ### v2.0.0
+- 新增 Data Copilot 数据查询模块
+- 三层NL2SQL架构（Schema检索 + SQL生成 + 安全校验）
+- Schema Embedding语义索引
+- AI Insight结果分析
+- 查询历史记录存储
 - 新增PM方案工作室功能
 - SSE流式对话支持
 - 知识库严格隔离检索
