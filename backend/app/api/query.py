@@ -163,6 +163,7 @@ async def clear_history(session_id: str):
 
     删除当前会话的所有查询记录
     """
+    service = get_query_service(session_id)
     result = await service.clear_history()
     return {"success": result, "session_id": session_id}
 
