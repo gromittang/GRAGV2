@@ -50,25 +50,39 @@ class MySQLManager:
         async with self._pool.acquire() as conn:
             yield conn
 
-    async def execute(self, sql: str, params: List = None) -> Dict:
-        """执行SQL并返回结果"""
-        async with self.get_connection() as conn:
-            async with conn.cursor(aiomysql.DictCursor) as cursor:
-                await cursor.execute(sql, params or [])
+    async def execute(self, sql: str, params: Optional[List[Any]] = None) -> Dict:
+        """执行SQL并返回结果
 
-                if sql.strip().lower().startswith("select"):
-                    rows = await cursor.fetchall()
-                    return {
-                        "success": True,
-                        "rows": rows,
-                        "count": len(rows),
-                        "columns": [desc[0] for desc in cursor.description] if cursor.description else []
-                    }
-                else:
-                    return {
-                        "success": True,
-                        "affected_rows": cursor.rowcount
-                    }
+        Args:
+            sql: SQL语句
+            params: 参数列表
+
+        Returns:
+            包含success、rows/count或error的字典
+        """
+        try:
+            async with self.get_connection() as conn:
+                async with conn.cursor(aiomysql.DictCursor) as cursor:
+                    await cursor.execute(sql, params or [])
+
+                    if sql.strip().lower().startswith("select"):
+                        rows = await cursor.fetchall()
+                        return {
+                            "success": True,
+                            "rows": rows,
+                            "count": len(rows),
+                            "columns": [desc[0] for desc in cursor.description] if cursor.description else []
+                        }
+                    else:
+                        return {
+                            "success": True,
+                            "affected_rows": cursor.rowcount
+                        }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e)
+            }
 
     async def test_connection(self) -> bool:
         """测试连接"""
@@ -155,14 +169,17 @@ class MySQLManager:
         return schema
 
 
-# 单例
+# 单例和锁
 _mysql_manager: Optional[MySQLManager] = None
+_init_lock = asyncio.Lock()
 
 
 async def get_mysql_manager() -> MySQLManager:
     """获取MySQL管理器（单例）"""
     global _mysql_manager
     if _mysql_manager is None:
-        _mysql_manager = MySQLManager()
-        await _mysql_manager.init_pool()
+        async with _init_lock:
+            if _mysql_manager is None:  # 双重检查
+                _mysql_manager = MySQLManager()
+                await _mysql_manager.init_pool()
     return _mysql_manager
