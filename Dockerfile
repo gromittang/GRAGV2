@@ -26,14 +26,11 @@ RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua
 # 后端代码
 COPY backend/app ./app
 
-# Embedding 模型（如预下载）
-COPY backend/models ./models 2>/dev/null || true
-
 # 前端构建产物
 COPY --from=frontend-build /app/frontend/dist ./frontend/dist
 
 # 数据目录
-RUN mkdir -p /app/data/{chroma,uploads,sessions}
+RUN mkdir -p /app/data/chroma /app/data/uploads /app/data/sessions /app/data/images
 
 ENV DATA_DIR=/app/data \
     APP_ENV=production \
