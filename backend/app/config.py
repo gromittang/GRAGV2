@@ -44,6 +44,18 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/kb.db"
     chroma_persist_dir: str = ""
 
+    # MySQL 配置（数据查询模块）
+    mysql_host: str = "localhost"
+    mysql_port: int = 3306
+    mysql_user: str = "root"
+    mysql_password: str = ""
+    mysql_database: str = "wms"
+
+    @property
+    def mysql_connection_url(self) -> str:
+        """MySQL 连接 URL"""
+        return f"mysql+aiomysql://{self.mysql_user}:{self.mysql_password}@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
+
     # 行业配置
     industry_type: str = "general"
 
