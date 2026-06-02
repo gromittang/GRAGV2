@@ -2,7 +2,7 @@
 Schema Manager
 加载Schema元数据并构建Embedding索引，支持语义搜索
 """
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 import json
 import numpy as np
 
@@ -13,10 +13,12 @@ from app.core.embedding import get_default_embedding
 class SchemaManager:
     """Schema加载与Embedding索引管理"""
 
-    _schema_cache: Dict = {}
-    _schema_texts: List[str] = []  # 用于embedding的文本列表
-    _schema_embeddings: List = []  # embedding向量列表
-    _initialized: bool = False
+    def __init__(self):
+        """初始化Schema管理器"""
+        self._schema_cache: Dict[str, Any] = {}
+        self._schema_texts: List[str] = []
+        self._schema_embeddings: List[np.ndarray] = []
+        self._initialized: bool = False
 
     async def load_schema_from_db(self) -> Dict:
         """从数据库加载Schema"""
@@ -41,17 +43,25 @@ class SchemaManager:
 
     async def build_embedding_index(self) -> None:
         """构建Embedding索引"""
-        if not self._schema_cache:
-            await self.load_schema_from_db()
+        try:
+            if not self._schema_cache:
+                await self.load_schema_from_db()
 
-        self._schema_texts = self._build_schema_texts()
+            if not self._schema_cache:
+                print("[SchemaManager] Schema为空，无法构建索引")
+                return
 
-        # 使用现有embedding模型
-        embedding_model = get_default_embedding()
-        self._schema_embeddings = embedding_model.get_text_embedding_batch(self._schema_texts)
+            self._schema_texts = self._build_schema_texts()
 
-        self._initialized = True
-        print(f"[SchemaManager] 索引构建完成: {len(self._schema_texts)} 条")
+            # 使用现有embedding模型
+            embedding_model = get_default_embedding()
+            self._schema_embeddings = embedding_model.get_text_embedding_batch(self._schema_texts)
+
+            self._initialized = True
+            print(f"[SchemaManager] 索引构建完成: {len(self._schema_texts)} 条")
+        except Exception as e:
+            print(f"[SchemaManager] 索引构建失败: {e}")
+            self._initialized = False
 
     async def search_relevant_schema(self, query: str, top_k: int = 5) -> Dict:
         """语义搜索相关Schema"""
