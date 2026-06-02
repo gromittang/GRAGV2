@@ -13,7 +13,7 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
-from app.api import chat, documents, knowledge, agent, pm_solution
+from app.api import chat, documents, knowledge, agent, pm_solution, query
 
 settings = get_settings()
 
@@ -38,6 +38,11 @@ async def lifespan(app: FastAPI):
 
     print(f"行业配置: {settings.industry_type}")
     print(f"LLM Provider: {settings.llm_provider}")
+
+    # 初始化数据查询模块
+    from app.models.query_history import init_query_history
+    init_query_history()
+    print("查询历史数据库初始化完成")
 
     yield
 
@@ -65,6 +70,7 @@ app.include_router(documents.router, prefix="/api/v1/docs", tags=["文档"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["知识库"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 app.include_router(pm_solution.router, prefix="/api/v1/pm-solution", tags=["PM方案"])
+app.include_router(query.router, prefix="/api/v1/query", tags=["数据查询"])
 
 # 图片静态文件服务（必须在catch-all路由之前）
 IMAGES_DIR = os.path.join(settings.data_dir, "images")
