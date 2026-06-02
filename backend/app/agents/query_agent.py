@@ -1,0 +1,249 @@
+"""
+数据查询Agent
+整合Schema搜索、SQL生成、校验、执行工具链
+"""
+from typing import Dict, Any, List, Optional
+import json
+import asyncio
+
+from app.core.llm_manager import get_llm
+from app.core.schema_manager import get_schema_manager
+from app.core.db_mysql import get_mysql_manager
+from app.agents.tools_sql import SQLValidateTool
+from app.agents.prompts_sql import INSIGHT_GENERATION_PROMPT
+
+
+class QueryAgent:
+    """数据查询Agent"""
+
+    def __init__(self, llm_provider: str = None):
+        self._llm = get_llm(llm_provider)
+        self._llm_provider = llm_provider
+        self._memory: List[Dict] = []
+
+    async def query(self, question: str) -> Dict[str, Any]:
+        """
+        执行自然语言查询
+
+        流程：
+        1. Schema搜索 → 找相关表/字段
+        2. SQL生成 → LLM生成SQL
+        3. SQL校验 → 安全检查
+        4. SQL执行 → 获取结果
+        5. Insight生成 → AI分析
+        """
+        self._memory.append({"role": "user", "content": question})
+
+        try:
+            # Step 1: Schema搜索
+            schema_manager = await get_schema_manager()
+            schema_result = await schema_manager.search_relevant_schema(question)
+
+            if not schema_result.get("tables"):
+                return {
+                    "success": False,
+                    "error": "无法找到相关的数据库表，请确认问题是否与业务数据相关",
+                    "question": question
+                }
+
+            schema_text = schema_result.get("schema_text", "")
+
+            # Step 2: SQL生成（使用LLM）
+            from app.agents.prompts_sql import SQL_GENERATION_PROMPT
+
+            prompt = SQL_GENERATION_PROMPT.format(
+                schema_context=schema_text,
+                user_question=question
+            )
+
+            response = self._llm.invoke(prompt)
+            content = response.content if hasattr(response, 'content') else str(response)
+
+            # 提取JSON
+            import re
+            json_match = re.search(r'\{[\s\S]*\}', content)
+            if not json_match:
+                return {
+                    "success": False,
+                    "error": "无法解析SQL生成结果",
+                    "question": question,
+                    "raw_output": content
+                }
+
+            sql_result = json.loads(json_match.group(0))
+
+            if sql_result.get("error") or sql_result.get("sql") == "NEED_CLARIFICATION":
+                return {
+                    "success": False,
+                    "error": sql_result.get("error", "无法生成有效的SQL，请提供更具体的问题"),
+                    "question": question,
+                    "schema_matched": schema_result.get("tables", [])
+                }
+
+            generated_sql = sql_result.get("sql", "")
+
+            # Step 3: SQL校验
+            validate_tool = SQLValidateTool()
+            validate_result_str = await validate_tool._arun(generated_sql)
+            validate_result = json.loads(validate_result_str)
+
+            if not validate_result.get("valid"):
+                return {
+                    "success": False,
+                    "error": validate_result.get("reason"),
+                    "sql": generated_sql,
+                    "question": question
+                }
+
+            final_sql = validate_result.get("sql", generated_sql)
+
+            # Step 4: SQL执行
+            mysql_manager = await get_mysql_manager()
+            execute_result = await mysql_manager.execute(final_sql)
+
+            if not execute_result.get("success"):
+                return {
+                    "success": False,
+                    "error": execute_result.get("error", "SQL执行失败"),
+                    "sql": final_sql,
+                    "question": question
+                }
+
+            rows = execute_result.get("rows", [])
+            columns = execute_result.get("columns", [])
+
+            # Step 5: Insight生成
+            insight = await self._generate_insight(question, rows[:10])
+
+            # 保存回答
+            self._memory.append({
+                "role": "assistant",
+                "content": insight.get("summary", ""),
+                "sql": final_sql
+            })
+
+            return {
+                "success": True,
+                "sql": final_sql,
+                "results": rows,
+                "columns": columns,
+                "total": len(rows),
+                "tables_used": sql_result.get("tables_used", []),
+                "confidence": sql_result.get("confidence", 0),
+                "explanation": sql_result.get("explanation", ""),
+                "insight": insight,
+                "question": question
+            }
+
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "question": question
+            }
+
+    async def _generate_insight(self, question: str, results: List[Dict]) -> Dict:
+        """生成AI分析洞察"""
+        if not results:
+            return {"summary": "查询无结果", "insights": [], "follow_ups": []}
+
+        # 格式化结果用于Prompt
+        result_text = json.dumps(results[:10], ensure_ascii=False, indent=2)
+
+        prompt = INSIGHT_GENERATION_PROMPT.format(
+            user_question=question,
+            query_result=result_text
+        )
+
+        try:
+            response = self._llm.invoke(prompt)
+            content = response.content if hasattr(response, 'content') else str(response)
+
+            # 解析Insight
+            insights = self._parse_insight(content)
+            return insights
+        except Exception as e:
+            return {
+                "summary": f"分析生成失败: {e}",
+                "insights": [],
+                "follow_ups": []
+            }
+
+    def _parse_insight(self, content: str) -> Dict:
+        """解析Insight内容"""
+        lines = content.split("\n")
+        insights = []
+        follow_ups = []
+        summary = ""
+
+        for line in lines:
+            line = line.strip()
+            if line.startswith("- ") and "结论" in content[:200]:
+                insights.append(line[2:])
+            elif "追问" in line or "还想了解" in line:
+                if ":" in line:
+                    follow_part = line.split(":")[-1]
+                    follow_ups = [q.strip() for q in follow_part.replace("?", "").split(",") if q.strip()][:3]
+
+        summary = insights[0] if insights else "查询成功"
+
+        return {
+            "summary": summary,
+            "insights": insights[:3],
+            "follow_ups": follow_ups[:3],
+            "raw": content
+        }
+
+    async def execute_sql(self, sql: str) -> Dict[str, Any]:
+        """直接执行SQL（带校验）"""
+        validate_tool = SQLValidateTool()
+        validate_result = json.loads(await validate_tool._arun(sql))
+
+        if not validate_result.get("valid"):
+            return {
+                "success": False,
+                "error": validate_result.get("reason"),
+                "sql": sql
+            }
+
+        final_sql = validate_result.get("sql", sql)
+
+        mysql_manager = await get_mysql_manager()
+        result = await mysql_manager.execute(final_sql)
+
+        return {
+            "success": result.get("success", False),
+            "sql": final_sql,
+            "results": result.get("rows", []),
+            "columns": result.get("columns", []),
+            "total": result.get("count", 0),
+            "error": result.get("error")
+        }
+
+    def clear_memory(self):
+        """清空记忆"""
+        self._memory = []
+
+    def get_memory_history(self) -> List[Dict]:
+        """获取记忆历史"""
+        return self._memory.copy()
+
+
+# 单例和锁
+_query_agent: Optional[QueryAgent] = None
+_init_lock = None
+
+
+async def get_query_agent(llm_provider: str = None) -> QueryAgent:
+    """获取Query Agent（单例）"""
+    global _query_agent, _init_lock
+
+    if _query_agent is None:
+        if _init_lock is None:
+            _init_lock = asyncio.Lock()
+
+        async with _init_lock:
+            if _query_agent is None:
+                _query_agent = QueryAgent(llm_provider)
+
+    return _query_agent
