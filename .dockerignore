@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# 环境文件
+.env
+.env.local
+*.env
+
+# 数据文件
+backend/data/
+data/
+*.db
+*.sqlite
+
+# ChromaDB
+chroma/
+
+# 缓存
+__pycache__/
+*.py[c,o]
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 前端
+frontend/vue-app/node_modules/
+frontend/vue-app/dist/
+
+# 测试
+tests/
+test_documents/
+
+# 文档
+docs/
+*.md
+!README.md
+
+# 参考文件
+参考/

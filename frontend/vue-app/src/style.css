@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: 'Inter', 'Noto Sans SC', sans-serif;
+  background-color: #F8FAFC;
+  color: #334155;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+}
+
+/* Sidebar noise texture */
+.sidebar-texture {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* Pulse dot animation */
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+.pulse-dot {
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+/* Modal backdrop animation */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-modal-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+/* Count-up numbers */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hairline borders */
+.hairline-b { border-bottom: 1px solid #E2E8F0; }
+.hairline-t { border-top: 1px solid #E2E8F0; }
+.hairline-r { border-right: 1px solid #E2E8F0; }
+.hairline { border: 1px solid #E2E8F0; }

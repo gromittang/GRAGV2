@@ -1,0 +1,50 @@
+<template>
+  <div v-if="columns.length && results.length" class="border border-grid bg-surface overflow-hidden">
+    <div class="h-8 hairline-b flex items-center justify-between px-4">
+      <span class="font-mono text-[10px] uppercase text-primary/40 tracking-wider">
+        查询结果 <span class="text-accent-green font-bold ml-1">{{ totalCount ? '共 ' + totalCount.toLocaleString() + ' 条' : '' }}</span>
+      </span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left">
+        <thead>
+          <tr class="border-b border-grid bg-warm-gray">
+            <th
+              v-for="col in columns"
+              :key="col"
+              class="px-4 py-2.5 font-mono text-[11px] font-bold text-primary/60 uppercase tracking-wider whitespace-nowrap"
+            >{{ col }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(row, i) in results"
+            :key="i"
+            class="border-b border-grid last:border-0"
+            :class="i % 2 === 0 ? 'bg-surface' : 'bg-warm-gray/50'"
+          >
+            <td
+              v-for="col in columns"
+              :key="col"
+              class="px-4 py-2.5 text-[13px] text-primary/80 whitespace-nowrap"
+            >{{ formatCell(row[col]) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>
+
+<script setup>
+defineProps({
+  columns: { type: Array, default: () => [] },
+  results: { type: Array, default: () => [] },
+  totalCount: { type: Number, default: 0 },
+})
+
+function formatCell(val) {
+  if (val === null || val === undefined) return '—'
+  if (typeof val === 'number') return val.toLocaleString()
+  return String(val)
+}
+</script>

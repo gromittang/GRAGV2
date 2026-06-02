@@ -1,0 +1,47 @@
+# 环境文件（含密钥）
+.env
+.env.local
+.env.*.local
+*.env
+
+# 数据文件
+backend/data/
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB
+chroma/
+
+# 缓存
+__pycache__/
+*.py[c,o]
+.pytest_cache/
+.coverage
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# 日志
+*.log
+
+# 临时文件
+*.tmp
+*.bak
+
+# 前端
+frontend/vue-app/node_modules/
+frontend/vue-app/dist/
+
+# 测试文档
+test_documents/
+
+# 上传文件
+uploads/
+sessions/
+
+# 参考文件（不提交）
+参考/
