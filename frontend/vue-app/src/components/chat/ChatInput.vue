@@ -4,8 +4,8 @@
       <textarea
         ref="textareaRef"
         v-model="text"
-        class="flex-1 resize-none bg-warm-gray border border-grid px-4 py-3 text-[14px] text-primary placeholder:text-primary/30 focus:outline-none focus:border-accent-orange/40 transition-colors"
-        rows="2"
+        class="flex-1 resize-none bg-warm-gray border border-grid px-4 py-3 text-[14px] text-primary placeholder:text-primary/30 focus:outline-none focus:border-accent-orange/40 transition-colors min-h-[44px] max-h-[160px]"
+        rows="1"
         :placeholder="placeholder"
         :disabled="disabled"
         @keydown.enter.exact.prevent="handleSend"
@@ -14,7 +14,7 @@
       <button
         @click="handleSend"
         :disabled="!text.trim() || disabled"
-        class="h-10 px-5 bg-accent-orange text-white text-[13px] font-medium hover:bg-accent-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        class="h-[44px] px-5 bg-accent-orange text-white text-[13px] font-medium hover:bg-accent-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center"
       >
         <span v-if="!loading">发送</span>
         <span v-else class="inline-flex items-center gap-1.5">
@@ -46,7 +46,8 @@ function autoResize() {
     const el = textareaRef.value
     if (el) {
       el.style.height = 'auto'
-      el.style.height = Math.min(el.scrollHeight, 160) + 'px'
+      // 最小44px，最大160px
+      el.style.height = Math.max(44, Math.min(el.scrollHeight, 160)) + 'px'
     }
   })
 }
