@@ -17,73 +17,60 @@
       </button>
     </div>
 
-    <div v-else class="max-h-[500px] overflow-y-auto">
-      <div v-if="schema.tables">
-        <div
-          v-for="table in schema.tables"
-          :key="table.name || table.table_name"
-          class="border-b border-grid last:border-0"
-        >
-          <button
-            @click="toggleTable(table.name || table.table_name)"
-            class="w-full h-9 hairline-b flex items-center justify-between px-4 hover:bg-warm-gray transition-colors text-left"
-          >
-            <span class="font-mono text-[12px] font-bold text-primary">{{ table.name || table.table_name }}</span>
-            <Icon
-              icon="lucide:chevron-down"
-              class="text-xs text-primary/30 transition-transform"
-              :class="expanded.has(table.name || table.table_name) ? 'rotate-180' : ''"
-            />
-          </button>
+    <template v-else>
+      <div class="p-3 border-b border-grid">
+        <input
+          v-model="searchQuery"
+          placeholder="搜索表名或注释..."
+          class="w-full px-3 py-2 border border-grid rounded text-sm focus:border-accent-orange focus:outline-none"
+        />
+      </div>
 
-          <div v-if="expanded.has(table.name || table.table_name)" class="bg-warm-gray/50 px-4 py-2">
-            <div
-              v-for="col in (table.columns || table.fields || [])"
-              :key="col.name || col.column_name"
-              class="flex items-center justify-between py-1.5 text-[12px]"
-            >
-              <span class="text-primary/70">{{ col.name || col.column_name }}</span>
-              <span class="font-mono text-[10px] text-primary/30">{{ col.type || col.data_type }}</span>
-            </div>
+      <div class="max-h-[500px] overflow-y-auto">
+        <div v-if="filteredTables.length > 0">
+          <div
+            v-for="table in filteredTables"
+            :key="table.name || table.table_name"
+            class="border-b border-grid last:border-0"
+          >
             <button
-              @click="$emit('preview', table.name || table.table_name)"
-              class="mt-2 font-mono text-[10px] text-accent-orange hover:underline uppercase"
+              @click="$emit('open-window', table.name || table.table_name)"
+              class="w-full h-9 hairline-b flex items-center justify-between px-4 hover:bg-warm-gray transition-colors text-left"
             >
-              预览前5行
+              <span class="font-mono text-[12px] font-bold text-primary">{{ table.name || table.table_name }}</span>
+              <Icon icon="lucide:external-link" class="text-xs text-primary/30" />
             </button>
           </div>
         </div>
-      </div>
 
-      <div v-else-if="schema.tables" class="p-4">
-        <p class="text-[12px] text-primary/50">Tables: {{ Array.isArray(schema.tables) ? schema.tables.join(', ') : JSON.stringify(schema.tables) }}</p>
+        <div v-else class="p-4">
+          <p class="text-[12px] text-primary/50">无匹配的表</p>
+        </div>
       </div>
-
-      <div v-else class="p-4">
-        <p class="text-[12px] text-primary/50">Schema 数据格式: {{ Object.keys(schema).join(', ') }}</p>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
 
-defineProps({
+const props = defineProps({
   schema: { type: Object, default: null },
   connectionOk: { type: Boolean, default: null },
 })
 
-defineEmits(['load-schema', 'preview'])
+defineEmits(['load-schema', 'preview', 'open-window'])
 
-const expanded = reactive(new Set())
+const searchQuery = ref('')
 
-function toggleTable(name) {
-  if (expanded.has(name)) {
-    expanded.delete(name)
-  } else {
-    expanded.add(name)
-  }
-}
+const filteredTables = computed(() => {
+  if (!searchQuery.value.trim()) return props.schema?.tables || []
+  const query = searchQuery.value.toLowerCase()
+  return (props.schema?.tables || []).filter(table => {
+    const name = (table.name || table.table_name || '').toLowerCase()
+    const displayName = (table.display_name || '').toLowerCase()
+    return name.includes(query) || displayName.includes(query)
+  })
+})
 </script>
