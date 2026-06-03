@@ -4,6 +4,7 @@ RAG 服务入口
 """
 from typing import List, Dict, Optional
 import os
+import re
 import httpx
 
 from app.config import get_settings
@@ -12,6 +13,23 @@ from app.rag.retriever import create_retriever
 from app.core.vector_store import get_vector_store_manager
 
 settings = get_settings()
+
+
+def _get_all_knowledge_ids_with_docs() -> List[str]:
+    """获取所有有文档的知识库ID"""
+    vector_manager = get_vector_store_manager()
+    collections = vector_manager.list_collections()
+
+    # 筛选出有数据的知识库collection
+    knowledge_ids = []
+    for coll in collections:
+        # collection名称格式: kb_documents_{knowledge_id} 或 kb_documents
+        if coll.name.startswith("kb_documents_") and coll.count() > 0:
+            # 提取knowledge_id
+            knowledge_id = coll.name.replace("kb_documents_", "")
+            knowledge_ids.append(knowledge_id)
+
+    return knowledge_ids
 
 
 def _get_document_info(document_id: str) -> Dict:
@@ -33,6 +51,17 @@ def _get_document_info(document_id: str) -> Dict:
         return {"name": "未知文档", "id": document_id}
 
 
+def _extract_images_from_text(text: str) -> List[Dict]:
+    """
+    从文本中提取图片信息
+    格式: [IMG]{url}|图片{n}[/IMG]
+    返回: [{"url": url, "label": label}, ...]
+    """
+    pattern = r'\[IMG\]([^|]+)\|([^[]+)\[/IMG\]'
+    matches = re.findall(pattern, text)
+    return [{"url": match[0], "label": match[1]} for match in matches]
+
+
 class RAGService:
     """RAG 问答服务"""
 
@@ -41,17 +70,48 @@ class RAGService:
         self.industry_type = industry_type or settings.industry_type
         self._index = None
         self._retriever = None
+        self._multi_kb = False  # 是否多知识库模式
 
     def _ensure_initialized(self):
         """确保索引已初始化"""
         if self._index is None:
-            builder = IndexBuilder(self.knowledge_id, self.industry_type)
-            self._index = builder.get_index()
-            if self._index:
-                self._retriever = create_retriever(self._index, self.knowledge_id, self.industry_type)
+            # 如果没有指定knowledge_id，搜索所有知识库
+            if self.knowledge_id is None:
+                self._init_multi_knowledge()
+            else:
+                builder = IndexBuilder(self.knowledge_id, self.industry_type)
+                self._index = builder.get_index()
+                if self._index:
+                    self._retriever = create_retriever(self._index, self.knowledge_id, self.industry_type)
+
+    def _init_multi_knowledge(self):
+        """初始化多知识库搜索"""
+        from llama_index.core import VectorStoreIndex, StorageContext
+        from app.core.embedding import get_default_embedding
+
+        # 获取所有有文档的知识库ID
+        kb_ids = _get_all_knowledge_ids_with_docs()
+        if not kb_ids:
+            return  # 没有知识库，保持None状态
+
+        self._multi_kb = True
+        embed_model = get_default_embedding()
+        vector_manager = get_vector_store_manager()
+
+        # 为每个知识库创建retriever并合并结果
+        self._retrievers = []
+        for kb_id in kb_ids:
+            try:
+                builder = IndexBuilder(kb_id, self.industry_type)
+                index = builder.get_index()
+                if index:
+                    retriever = create_retriever(index, kb_id, self.industry_type)
+                    self._retrievers.append((kb_id, retriever))
+            except Exception as e:
+                print(f"[RAG] 初始化知识库 {kb_id} 失败: {e}")
 
     def _build_sources(self, nodes: List) -> List[Dict]:
-        """构建来源信息，包含文档名称"""
+        """构建来源信息，包含文档名称和图片"""
         sources = []
         seen_doc_ids = set()  # 避免重复
 
@@ -61,10 +121,14 @@ class RAGService:
             # 获取文档信息
             doc_info = _get_document_info(doc_id)
 
-            # 构建来源对象
+            # 提取图片信息
+            images = _extract_images_from_text(n.text)
+
+            # 构建来源对象，增加 images 字段
             source = {
                 "content": n.text[:200] + "..." if len(n.text) > 200 else n.text,
                 "score": getattr(n, "score", 0),
+                "images": images,  # 新增字段
                 "metadata": {
                     **n.metadata,
                     "document_name": doc_info["name"],
@@ -116,6 +180,41 @@ class RAGService:
         """执行 RAG 问答"""
         self._ensure_initialized()
 
+        # 多知识库模式：合并搜索结果
+        if self._multi_kb and hasattr(self, '_retrievers') and self._retrievers:
+            from llama_index.core import QueryBundle
+            query_bundle = QueryBundle(question)
+
+            all_nodes = []
+            for kb_id, retriever in self._retrievers:
+                try:
+                    nodes = retriever.retrieve(query_bundle)
+                    all_nodes.extend(nodes)
+                except Exception as e:
+                    print(f"[RAG] 搜索知识库 {kb_id} 失败: {e}")
+
+            if not all_nodes:
+                return {
+                    "answer": "未找到相关内容。",
+                    "sources": [],
+                    "has_docs": False
+                }
+
+            # 按分数排序，取top_k
+            all_nodes.sort(key=lambda n: getattr(n, "score", 0), reverse=True)
+            top_nodes = all_nodes[:top_k]
+            context = "\n\n".join([n.text for n in top_nodes])
+
+            answer = self._generate_answer(question, context, history)
+            sources = self._build_sources(top_nodes)
+
+            return {
+                "answer": answer,
+                "sources": sources,
+                "has_docs": True
+            }
+
+        # 单知识库模式
         if self._index is None or self._retriever is None:
             return {
                 "answer": "知识库暂无文档，请先上传操作手册。",
@@ -148,6 +247,39 @@ class RAGService:
         """流式 RAG 问答"""
         self._ensure_initialized()
 
+        # 多知识库模式：合并搜索结果
+        if self._multi_kb and hasattr(self, '_retrievers') and self._retrievers:
+            yield {"type": "status", "content": "正在搜索所有知识库..."}
+
+            from llama_index.core import QueryBundle
+            query_bundle = QueryBundle(question)
+
+            all_nodes = []
+            for kb_id, retriever in self._retrievers:
+                try:
+                    nodes = retriever.retrieve(query_bundle)
+                    all_nodes.extend(nodes)
+                except Exception as e:
+                    print(f"[RAG] 搜索知识库 {kb_id} 失败: {e}")
+
+            if not all_nodes:
+                yield {"type": "error", "content": "未找到相关内容"}
+                return
+
+            all_nodes.sort(key=lambda n: getattr(n, "score", 0), reverse=True)
+            top_nodes = all_nodes[:top_k]
+            context = "\n\n".join([n.text for n in top_nodes])
+
+            yield {"type": "status", "content": "正在生成回答..."}
+
+            for token in self._generate_answer_stream(question, context, history):
+                yield {"type": "token", "content": token}
+
+            sources = self._build_sources(top_nodes)
+            yield {"type": "done", "sources": sources}
+            return
+
+        # 单知识库模式
         if self._index is None:
             yield {"type": "error", "content": "知识库暂无文档"}
             return
