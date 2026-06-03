@@ -66,7 +66,7 @@ STAGE_TEMPLATES = {
 class SessionCreateRequest(BaseModel):
     problem: str = Field(..., min_length=1, description="问题描述")
     title: Optional[str] = Field(None, max_length=256, description="会话标题")
-    knowledge_id: Optional[str] = Field(None, description="知识库ID")
+    knowledge_id: Optional[str] = Field(None, description="知识库ID，传空字符串表示不限定知识库（检索全部）")
 
 
 class SessionUpdateRequest(BaseModel):
@@ -75,6 +75,7 @@ class SessionUpdateRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     user_input: str = Field(..., min_length=1, description="用户输入")
+    current_phase: Optional[int] = Field(None, ge=0, le=3, description="用户当前所在的阶段(0-3)，用于确定生成下一阶段内容")
 
 
 class RollbackRequest(BaseModel):
@@ -85,7 +86,7 @@ class SessionResponse(BaseModel):
     id: str
     title: str
     problem: str
-    knowledge_id: str
+    knowledge_id: Optional[str]  # None表示不限定知识库
     document_id: Optional[str]
     current_stage: int
     stage_status: str
@@ -112,13 +113,20 @@ async def create_session(request: SessionCreateRequest):
     """创建新方案会话"""
     session = get_session()
     try:
-        # 获取或创建默认知识库
-        if not request.knowledge_id:
+        # 知识库选择逻辑：
+        # - 明确指定knowledge_id: 使用指定的知识库
+        # - 空字符串"": 不限定知识库（检索全部），设为null
+        # - None: 默认使用PM方案知识库
+        if request.knowledge_id == "":
+            # 不限定知识库，检索全部
+            knowledge_id = None
+        elif request.knowledge_id:
+            knowledge_id = request.knowledge_id
+        else:
+            # 默认使用PM方案知识库
             from app.models.document import get_or_create_knowledge
             kb = get_or_create_knowledge(session, "PM方案知识库")
             knowledge_id = kb.id
-        else:
-            knowledge_id = request.knowledge_id
 
         # 创建会话
         pm_session = PMSession(
@@ -276,9 +284,15 @@ async def update_session_title(session_id: str, request: SessionUpdateRequest):
 
 @router.post("/sessions/{session_id}/chat")
 async def chat_in_stage(session_id: str, request: ChatRequest):
-    """阶段内对话（SSE流式输出）"""
+    """阶段内对话（SSE流式输出）
+
+    current_phase参数说明：
+    - 用户在Px页面点击"继续下一步"时，应传入current_phase=x
+    - API会生成Px+1的内容（如果x<3）
+    - 如果current_phase未传入，则使用session的current_stage
+    """
     api_start = time.time()
-    log_timing("API", f"收到chat请求 session_id={session_id}, input_len={len(request.user_input)}")
+    log_timing("API", f"收到chat请求 session_id={session_id}, current_phase={request.current_phase}, input_len={len(request.user_input)}")
 
     session = get_session()
     try:
@@ -287,9 +301,26 @@ async def chat_in_stage(session_id: str, request: ChatRequest):
             raise HTTPException(404, "会话不存在")
 
         knowledge_id = pm_session.knowledge_id
-        current_stage = pm_session.current_stage
+
+        # 确定目标阶段：如果用户传入current_phase，则生成下一阶段内容
+        if request.current_phase is not None:
+            # 用户在Px页面点击"继续下一步"，应该生成Px+1的内容
+            # 但如果用户只是输入文字（不是点击继续），则仍用当前阶段
+            if request.user_input in ["继续下一步", "继续", "下一步", "next", "生成下一阶段"]:
+                target_stage = request.current_phase + 1 if request.current_phase < 3 else request.current_phase
+                # 更新session的current_stage
+                if target_stage > pm_session.current_stage:
+                    pm_session.current_stage = target_stage
+                    pm_session.stage_status = "active"
+                    session.commit()
+            else:
+                # 用户输入了实际内容，在当前阶段对话
+                target_stage = request.current_phase
+        else:
+            target_stage = pm_session.current_stage
+
         session.close()
-        log_timing("API", f"查询session完成 knowledge_id={knowledge_id}, current_stage={current_stage}", api_start)
+        log_timing("API", f"查询session完成 knowledge_id={knowledge_id}, target_stage={target_stage}", api_start)
 
         # 调用服务层进行流式对话
         service = PMSolutionService(knowledge_id)
@@ -303,7 +334,7 @@ async def chat_in_stage(session_id: str, request: ChatRequest):
 
             for chunk in service.chat_stream(
                 session_id=session_id,
-                stage_type=_get_stage_type(current_stage),
+                stage_type=_get_stage_type(target_stage),
                 user_input=request.user_input
             ):
                 chunk_count += 1
@@ -318,9 +349,11 @@ async def chat_in_stage(session_id: str, request: ChatRequest):
 
             log_timing("STREAM", f"流式生成完成，共{chunk_count}个chunk，response_len={len(full_response)}", stream_start)
 
-            # 保存对话记录
+            # 保存对话记录并更新阶段状态为generated
             save_start = time.time()
-            save_chat_record(session_id, current_stage, request.user_input, full_response, sources)
+            save_chat_record(session_id, target_stage, request.user_input, full_response, sources)
+            # 更新阶段状态为generated（已生成内容但未确认）
+            update_stage_status(session_id, target_stage, "generated")
             log_timing("SAVE", f"保存对话记录完成", save_start)
 
             log_timing("API", f"chat请求完全处理，总耗时={(time.time()-api_start)*1000:.0f}ms", api_start)
@@ -637,10 +670,20 @@ def save_chat_record(session_id: str, stage_order: int, user_input: str, respons
             PMStage.stage_type == stage_type
         ).first()
 
+        # 如果阶段记录不存在，创建一个
+        if not stage_record:
+            stage_record = PMStage(
+                session_id=session_id,
+                stage_type=stage_type,
+                status="generated"
+            )
+            session.add(stage_record)
+            session.flush()
+
         # 保存用户消息
         user_chat = PMChat(
             session_id=session_id,
-            stage_id=stage_record.id if stage_record else None,
+            stage_id=stage_record.id,
             role="user",
             content=user_input,
             sources=[]
@@ -650,7 +693,7 @@ def save_chat_record(session_id: str, stage_order: int, user_input: str, respons
         # 保存助手回复
         assistant_chat = PMChat(
             session_id=session_id,
-            stage_id=stage_record.id if stage_record else None,
+            stage_id=stage_record.id,
             role="assistant",
             content=response,
             sources=sources
@@ -662,4 +705,27 @@ def save_chat_record(session_id: str, stage_order: int, user_input: str, respons
 
     except Exception as e:
         print(f"[PM] 保存对话记录失败: {e}")
+        session.close()
+
+
+def update_stage_status(session_id: str, stage_order: int, status: str):
+    """更新阶段状态"""
+    session = get_session()
+    try:
+        stage_type = _get_stage_type(stage_order)
+        stage_record = session.query(PMStage).filter(
+            PMStage.session_id == session_id,
+            PMStage.stage_type == stage_type
+        ).first()
+
+        if stage_record:
+            # 只有在当前状态不是confirmed时才更新
+            if stage_record.status != "confirmed":
+                stage_record.status = status
+            session.commit()
+
+        session.close()
+
+    except Exception as e:
+        print(f"[PM] 更新阶段状态失败: {e}")
         session.close()

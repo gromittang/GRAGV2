@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(superdesign *、)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(superdesign create-design-draft *)",
+      "Bash(git add *)"
+    ]
+  }
+}

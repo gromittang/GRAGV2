@@ -311,13 +311,13 @@ class RAGService:
             yield f"\n[生成中断: {str(e)}]"
 
 
-# 单例
-_rag_service: Optional[RAGService] = None
+# 服务缓存（按knowledge_id缓存）
+_rag_services: Dict[str, RAGService] = {}
 
 
 def get_rag_service(knowledge_id: str = None, industry_type: str = None) -> RAGService:
-    """获取 RAG 服务"""
-    global _rag_service
-    if _rag_service is None:
-        _rag_service = RAGService(knowledge_id, industry_type)
-    return _rag_service
+    """获取 RAG 服务（按knowledge_id缓存）"""
+    cache_key = knowledge_id or "default"
+    if cache_key not in _rag_services:
+        _rag_services[cache_key] = RAGService(knowledge_id, industry_type)
+    return _rag_services[cache_key]

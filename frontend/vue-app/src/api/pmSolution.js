@@ -4,11 +4,12 @@ const PM_SOLUTION_BASE = '/pm-solution'
 
 export const pmSolutionApi = {
   // 创建新方案会话
+  // knowledgeId: 知识库ID，空字符串''表示"不限定知识库（检索全部）"，null表示使用默认PM方案知识库
   createSession(problemDescription, title = null, knowledgeId = null) {
     return api.post(`${PM_SOLUTION_BASE}/sessions`, {
       problem: problemDescription,
       title: title,
-      knowledge_id: knowledgeId
+      knowledge_id: knowledgeId  // 空字符串''会被正确传递
     })
   },
 
@@ -30,11 +31,16 @@ export const pmSolutionApi = {
   },
 
   // 阶段内对话（SSE流式）
-  chatStream(sessionId, userInput) {
+  // currentPhase: 用户当前所在的阶段索引(0-3)，用于确定生成下一阶段内容
+  chatStream(sessionId, userInput, currentPhase = null) {
+    const body = { user_input: userInput }
+    if (currentPhase !== null) {
+      body.current_phase = currentPhase
+    }
     return fetch(`/api/v1${PM_SOLUTION_BASE}/sessions/${sessionId}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_input: userInput }),
+      body: JSON.stringify(body),
     })
   },
 

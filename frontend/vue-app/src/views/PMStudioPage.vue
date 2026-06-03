@@ -49,12 +49,12 @@
                   class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
                   :class="getPhaseBadgeClass(index)"
                 >
-                  {{ isCompletedPhase(index) ? '✓' : index + 1 }}
+                  {{ isCompletedPhase(index) ? '✓' : (isGeneratedPhase(index) ? '○' : index + 1) }}
                 </div>
                 <div class="flex-1 min-w-0">
                   <div
                     class="text-sm font-medium truncate"
-                    :class="isCurrentPhase(index) ? 'text-accent-orange' : 'text-primary'"
+                    :class="isCurrentPhase(index) ? 'text-accent-orange' : (isGeneratedPhase(index) ? 'text-blue-500' : 'text-primary')"
                   >
                     {{ phase.label }}
                   </div>
@@ -77,6 +77,13 @@
                 class="absolute right-2 top-2"
               >
                 <Icon icon="lucide:check-circle" class="text-green-500 text-sm" />
+              </div>
+              <!-- Generated indicator -->
+              <div
+                v-if="isGeneratedPhase(index) && !isCurrentPhase(index)"
+                class="absolute right-2 top-2"
+              >
+                <Icon icon="lucide:file-text" class="text-blue-500 text-sm" />
               </div>
             </div>
           </li>
@@ -248,12 +255,6 @@
                 </div>
               </div>
 
-              <!-- Waiting state -->
-              <div v-else-if="!loading && !currentOutput" class="bg-warm-gray border border-grid rounded-lg p-6 mb-4 text-center text-grid">
-                <Icon icon="lucide:hourglass" class="text-2xl mb-2" />
-                <p>等待处理...</p>
-              </div>
-
               <!-- User Input - 对话框模式，两个按钮 -->
               <div class="bg-warm-gray border border-grid rounded-lg p-4">
                 <textarea
@@ -365,6 +366,9 @@ const phases = [
   { key: 'prd', label: 'PRD生成' },
 ]
 
+// 阶段状态数据 - 用于跟踪每个阶段的状态
+const phaseStatuses = ref({})  // { problem: 'active', analysis: 'generated', ... }
+
 // State
 const problemInput = ref('')
 const titleInput = ref('')
@@ -446,11 +450,20 @@ function isCurrentPhase(index) {
 }
 
 function isCompletedPhase(index) {
-  return index < currentPhaseIndex.value
+  // 已确认的阶段（状态为confirmed）
+  const phaseKey = phases[index]?.key
+  return phaseStatuses.value[phaseKey] === 'confirmed'
+}
+
+function isGeneratedPhase(index) {
+  // 已生成内容但未确认的阶段（状态为generated）
+  const phaseKey = phases[index]?.key
+  return phaseStatuses.value[phaseKey] === 'generated'
 }
 
 function getPhaseBadgeClass(index) {
   if (isCompletedPhase(index)) return 'bg-green-100 text-green-600'
+  if (isGeneratedPhase(index)) return 'bg-blue-100 text-blue-600'  // 蓝色表示已生成但未确认
   if (isCurrentPhase(index)) return 'bg-accent-orange text-white'
   return 'bg-gray-100 text-gray-400'
 }
@@ -458,21 +471,26 @@ function getPhaseBadgeClass(index) {
 function getPhaseDescClass(index) {
   if (isCurrentPhase(index)) return 'text-accent-orange/70'
   if (isCompletedPhase(index)) return 'text-green-600/50'
+  if (isGeneratedPhase(index)) return 'text-blue-500/50'  // 蓝色
   return 'text-gray-400'
 }
 
 function getPhaseDesc(index) {
   const descriptions = ['分析问题背景', '对比多个方案', '展开选定方案', '输出需求文档']
+  if (isGeneratedPhase(index)) return '已生成，待确认'
   return descriptions[index]
 }
 
 function getProgressText() {
-  const completed = currentPhaseIndex.value
-  return `${completed}/${phases.length} 阶段`
+  const completed = Object.values(phaseStatuses.value).filter(s => s === 'confirmed').length
+  return `${completed}/${phases.length} 阶段已确认`
 }
 
 function canRollback(index) {
-  return index < currentPhaseIndex.value && sessionId.value
+  // 可以回溯到：已完成的阶段、已生成的阶段
+  const phaseKey = phases[index]?.key
+  const status = phaseStatuses.value[phaseKey]
+  return (status === 'confirmed' || status === 'generated') && sessionId.value
 }
 
 // Title editing functions
@@ -523,15 +541,18 @@ async function createSession() {
   loading.value = true
   retrievedChunks.value = []
   chatHistory.value = {}
+  phaseStatuses.value = {}
 
   try {
     // 1. 创建会话
     const customTitle = titleInput.value.trim() || null
-    const knowledgeId = selectedKnowledgeId.value || null
+    // 重要：空字符串''表示"不限定知识库"，不要用|| null转换
+    const knowledgeId = selectedKnowledgeId.value  // ''表示不限定，null/undefined表示默认
     const res = await pmSolutionApi.createSession(problemInput.value.trim(), customTitle, knowledgeId)
     sessionId.value = res.data.id
     sessionTitle.value = res.data.title
     currentPhase.value = _getPhaseKey(res.data.current_stage)
+    phaseStatuses.value[currentPhase.value] = 'active'
 
     // 初始化对话历史
     chatHistory.value[currentPhase.value] = [{
@@ -539,9 +560,10 @@ async function createSession() {
       content: problemInput.value.trim()
     }]
 
-    // 2. 使用SSE流式对话
+    // 2. 使用SSE流式对话（传入当前阶段索引）
     let assistantContent = ''
-    const streamRes = await pmSolutionApi.chatStream(sessionId.value, problemInput.value.trim())
+    const currentIdx = _getStageIndex(currentPhase.value)
+    const streamRes = await pmSolutionApi.chatStream(sessionId.value, problemInput.value.trim(), currentIdx)
 
     const reader = streamRes.body.getReader()
     const decoder = new TextDecoder()
@@ -570,6 +592,8 @@ async function createSession() {
                 sources: data.sources || []
               })
               phaseOutputs.value[currentPhase.value] = ''
+              // 更新阶段状态为generated（已生成但未确认）
+              phaseStatuses.value[currentPhase.value] = 'generated'
 
               if (!data.sources || data.sources.length === 0) {
                 await fetchLatestSources(sessionId.value)
@@ -625,7 +649,9 @@ async function sendChat() {
     let assistantContent = ''
     console.log(`[FRONTEND] ${new Date().toLocaleTimeString()} 发送chatStream请求...`)
     const requestTime = performance.now()
-    const streamRes = await pmSolutionApi.chatStream(sessionId.value, inputText)
+    // 传入当前阶段索引
+    const currentIdx = _getStageIndex(currentPhase.value)
+    const streamRes = await pmSolutionApi.chatStream(sessionId.value, inputText, currentIdx)
     console.log(`[FRONTEND] ${(performance.now()-requestTime).toFixed(0)}ms 收到响应，开始读取流`)
 
     const reader = streamRes.body.getReader()
@@ -700,6 +726,9 @@ async function confirmAndNext() {
   if (!sessionId.value) return
   loading.value = true
   try {
+    // 标记当前阶段为confirmed
+    phaseStatuses.value[currentPhase.value] = 'confirmed'
+
     // 调用确认接口
     const confirmRes = await pmSolutionApi.confirm(sessionId.value)
 
@@ -722,11 +751,12 @@ async function confirmAndNext() {
       const nextIdx = currentIdx + 1
       const nextPhaseKey = phases[nextIdx].key
       currentPhase.value = nextPhaseKey
+      phaseStatuses.value[nextPhaseKey] = 'active'
 
       // 初始化下一阶段的对话历史
       chatHistory.value[nextPhaseKey] = []
 
-      // 自动发送初始对话启动下一阶段
+      // 自动发送初始对话启动下一阶段（传入当前阶段索引，让后端知道我们想生成下一阶段）
       const initPrompt = `请开始${phases[nextIdx].label}阶段的分析`
       chatHistory.value[nextPhaseKey].push({
         role: 'user',
@@ -734,7 +764,8 @@ async function confirmAndNext() {
       })
 
       let assistantContent = ''
-      const streamRes = await pmSolutionApi.chatStream(sessionId.value, initPrompt)
+      // 传入当前阶段索引（我们已经在nextIdx阶段，想生成这个阶段的内容）
+      const streamRes = await pmSolutionApi.chatStream(sessionId.value, initPrompt, nextIdx)
 
       const reader = streamRes.body.getReader()
       const decoder = new TextDecoder()
@@ -764,6 +795,8 @@ async function confirmAndNext() {
                 })
                 phaseOutputs.value[nextPhaseKey] = ''
                 retrievedChunks.value = data.sources || []
+                // 更新阶段状态为generated
+                phaseStatuses.value[nextPhaseKey] = 'generated'
               }
             } catch (e) {
               // Ignore parse errors
@@ -856,6 +889,7 @@ async function rollbackTo(targetPhase) {
   // 如果目标阶段已有对话历史，直接切换显示（不重新生成）
   if (chatHistory.value[targetPhase] && chatHistory.value[targetPhase].length > 0) {
     currentPhase.value = targetPhase
+    phaseStatuses.value[targetPhase] = 'active'
     // 从历史中获取sources
     const lastAssistant = chatHistory.value[targetPhase].filter(c => c.role === 'assistant').pop()
     retrievedChunks.value = lastAssistant?.sources || []
@@ -870,6 +904,7 @@ async function rollbackTo(targetPhase) {
     // 调用rollback API
     const res = await pmSolutionApi.rollback(sessionId.value, targetIdx)
     currentPhase.value = targetPhase
+    phaseStatuses.value[targetPhase] = 'active'
 
     // 从API加载对话历史
     const chatsRes = await pmSolutionApi.getChats(sessionId.value)
@@ -884,6 +919,10 @@ async function rollbackTo(targetPhase) {
       }))
       const lastAssistant = allChats.filter(c => c.role === 'assistant').pop()
       retrievedChunks.value = lastAssistant?.sources || []
+      // 如果有历史，标记为generated
+      if (allChats.some(c => c.role === 'assistant')) {
+        phaseStatuses.value[targetPhase] = 'generated'
+      }
     } else {
       // 没有历史，需要生成
       chatHistory.value[targetPhase] = [{
@@ -892,7 +931,8 @@ async function rollbackTo(targetPhase) {
       }]
 
       let assistantContent = ''
-      const streamRes = await pmSolutionApi.chatStream(sessionId.value, '请继续分析此阶段')
+      // 传入当前阶段索引
+      const streamRes = await pmSolutionApi.chatStream(sessionId.value, '请继续分析此阶段', targetIdx)
 
       const reader = streamRes.body.getReader()
       const decoder = new TextDecoder()
@@ -921,6 +961,7 @@ async function rollbackTo(targetPhase) {
                 })
                 phaseOutputs.value[targetPhase] = ''
                 retrievedChunks.value = data.sources || []
+                phaseStatuses.value[targetPhase] = 'generated'
               }
             } catch (e) {
               // Ignore parse errors
@@ -953,6 +994,14 @@ async function loadSession(sid) {
     sessionTitle.value = res.data.title
     currentPhase.value = _getPhaseKey(res.data.current_stage)
 
+    // 恢复阶段状态
+    phaseStatuses.value = {}
+    for (const stage of res.data.stages) {
+      phaseStatuses.value[stage.type] = stage.status
+    }
+    // 当前阶段设为active
+    phaseStatuses.value[currentPhase.value] = 'active'
+
     // 加载阶段输出（用于confirmed阶段的摘要）
     phaseOutputs.value = {}
     for (const stage of res.data.stages) {
@@ -978,6 +1027,15 @@ async function loadSession(sid) {
           content: chat.content,
           sources: chat.sources || []
         })
+      }
+
+      // 对于有对话但状态不是confirmed的阶段，设置为generated
+      for (const phaseKey of phases.map(p => p.key)) {
+        if (chatHistory.value[phaseKey] && chatHistory.value[phaseKey].some(c => c.role === 'assistant')) {
+          if (phaseStatuses.value[phaseKey] !== 'confirmed') {
+            phaseStatuses.value[phaseKey] = 'generated'
+          }
+        }
       }
 
       // 从当前阶段获取最新sources
@@ -1021,11 +1079,13 @@ function startNewSession() {
   sessionTitle.value = ''
   currentPhase.value = 'problem'
   phaseOutputs.value = {}
+  phaseStatuses.value = {}
   retrievedChunks.value = []
   problemInput.value = ''
   titleInput.value = ''
   userInput.value = ''
   editingTitle.value = false
+  chatHistory.value = {}
 }
 
 async function fetchHistory() {

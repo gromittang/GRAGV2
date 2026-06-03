@@ -17,7 +17,7 @@ class PMSession(Base):
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String(256), nullable=False, default='')
-    knowledge_id = Column(String(36), ForeignKey('knowledge.id'), nullable=False, index=True)
+    knowledge_id = Column(String(36), ForeignKey('knowledge.id'), nullable=True, index=True)  # None表示不限定知识库
     document_id = Column(String(36), ForeignKey('document.id'), nullable=True, index=True)
     problem = Column(Text, default='')  # 问题描述
     current_stage = Column(Integer, default=0)  # 当前阶段 (0-3)

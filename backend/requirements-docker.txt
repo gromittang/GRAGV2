@@ -9,9 +9,12 @@ llama-index-core>=0.10.50
 llama-index-embeddings-huggingface>=0.1.0
 llama-index-vector-stores-chroma>=0.1.0
 
-# LangChain
-langchain>=0.1.20
-langchain-core>=0.1.52
+# LangChain 全家桶
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.0
+langchain-community>=0.2.0
+langchain-anthropic>=0.1.0
 
 # 存储
 chromadb>=0.4.5
@@ -20,8 +23,9 @@ aiosqlite>=0.19.0
 aiomysql>=0.2.0
 numpy>=1.24.0
 
-# Embedding
-sentence-transformers>=2.2.0
+# Embedding（固定兼容版本，避免 PreTrainedModel 导入错误）
+transformers==4.44.0
+sentence-transformers==3.0.1
 
 # 文档处理
 python-docx>=1.1.0

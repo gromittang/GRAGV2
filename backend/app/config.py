@@ -8,6 +8,37 @@ import os
 from typing import Dict, Optional
 
 
+def _detect_frontend_dist() -> str:
+    """自动检测前端dist目录路径"""
+    # 优先使用环境变量
+    env_path = os.environ.get("FRONTEND_DIST_DIR", "")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    # Docker环境：工作目录是 /app，前端在 /app/frontend/vue-app/dist
+    if os.environ.get("APP_ENV") == "production":
+        docker_path = "/app/frontend/vue-app/dist"
+        if os.path.exists(docker_path):
+            return docker_path
+
+    # 本地开发环境：从 backend/app 向上到项目根目录
+    # backend/app/main.py -> backend/app -> backend -> 项目根目录
+    local_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+        "frontend", "vue-app", "dist"
+    )
+    if os.path.exists(local_path):
+        return local_path
+
+    # 兜底：尝试从当前工作目录查找
+    cwd_path = os.path.join(os.getcwd(), "frontend", "vue-app", "dist")
+    if os.path.exists(cwd_path):
+        return cwd_path
+
+    # 返回空字符串，表示前端未构建
+    return ""
+
+
 class Settings(BaseSettings):
     """应用配置"""
     # 应用基础
@@ -18,6 +49,9 @@ class Settings(BaseSettings):
 
     # 数据目录
     data_dir: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+
+    # 前端静态文件目录（支持环境变量覆盖）
+    frontend_dist_dir: str = ""  # 空则自动检测
 
     # LLM 配置
     llm_provider: str = "deepseek"  # deepseek | openai | anthropic | local
@@ -89,6 +123,15 @@ class Settings(BaseSettings):
         if url.startswith("sqlite+aiosqlite://"):
             return url.replace("sqlite+aiosqlite://", "sqlite://")
         return url
+
+    @property
+    def resolved_frontend_dist_dir(self) -> str:
+        """获取前端dist目录路径"""
+        # 优先使用配置值（可能来自环境变量）
+        if self.frontend_dist_dir and os.path.exists(self.frontend_dist_dir):
+            return self.frontend_dist_dir
+        # 自动检测
+        return _detect_frontend_dist()
 
     class Config:
         env_file = ".env"

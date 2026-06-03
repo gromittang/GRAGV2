@@ -124,7 +124,7 @@ async def upload_document(
 async def process_document_async(doc_id: str, file_path: str, knowledge_id: str):
     """异步处理文档"""
     from app.rag.document_processor import DocumentProcessor
-    from app.services.rag_service import get_rag_service
+    from app.rag.index_builder import IndexBuilder
 
     session = get_session()
     doc = session.query(Document).filter(Document.id == doc_id).first()
@@ -150,9 +150,14 @@ async def process_document_async(doc_id: str, file_path: str, knowledge_id: str)
             )
             session.add(para)
 
-        rag_service = get_rag_service()
-        documents = [{"id": str(uuid.uuid4()), "content": n.text, "metadata": n.metadata} for n in nodes]
-        rag_service.add_documents(documents)
+        # 使用IndexBuilder正确添加到知识库专用向量库
+        builder = IndexBuilder(knowledge_id)
+        from llama_index.core import Document as LlamaDoc
+        llama_docs = [
+            LlamaDoc(text=n.text, metadata=n.metadata, doc_id=str(uuid.uuid4()))
+            for n in nodes
+        ]
+        builder.build_index_from_docs(llama_docs)
 
         doc.status = "2"
         doc.char_length = sum(len(n.text) for n in nodes)

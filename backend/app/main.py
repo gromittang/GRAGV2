@@ -13,12 +13,12 @@ from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
-from app.api import chat, documents, knowledge, agent, pm_solution, query
+from app.api import chat, documents, knowledge, agent, pm_solution, query, vector_admin
 
 settings = get_settings()
 
-# 前端静态文件路径
-FRONTEND_DIST = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend", "vue-app", "dist")
+# 前端静态文件路径（通过配置自动检测，支持Docker和本地环境）
+FRONTEND_DIST = settings.resolved_frontend_dist_dir
 
 
 @asynccontextmanager
@@ -44,9 +44,136 @@ async def lifespan(app: FastAPI):
     init_query_history()
     print("查询历史数据库初始化完成")
 
+    # 启动时检查向量索引健康状态
+    await check_and_repair_vector_indices()
+
     yield
 
     print("应用关闭")
+
+
+async def check_and_repair_vector_indices():
+    """启动时检查向量索引健康状态，自动修复critical问题"""
+    import sqlite3
+    from sentence_transformers import SentenceTransformer
+    from app.core.vector_store import get_vector_store_manager
+
+    print("\n[启动检查] 检查向量索引健康状态...")
+
+    try:
+        # 连接数据库
+        db_path = os.path.join(settings.data_dir, "kb.db")
+        if not os.path.exists(db_path):
+            print("[启动检查] 数据库文件不存在，跳过向量检查")
+            return
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # 获取所有知识库和段落
+        cursor.execute("SELECT id, name FROM knowledge")
+        knowledges = cursor.fetchall()
+
+        cursor.execute("SELECT knowledge_id, COUNT(*) FROM paragraph GROUP BY knowledge_id")
+        para_counts = {row[0]: row[1] for row in cursor.fetchall()}
+
+        conn.close()
+
+        # 使用VectorStoreManager获取向量库客户端（避免实例冲突）
+        vector_manager = get_vector_store_manager()
+        chroma_client = vector_manager.get_client()
+        collections = chroma_client.list_collections()
+
+        # 检查每个知识库
+        need_rebuild = []
+        for kb_id, kb_name in knowledges:
+            para_count = para_counts.get(kb_id, 0)
+
+            # 找到对应的collection
+            coll_name = f"kb_documents_{kb_id}"
+            matching_colls = [c for c in collections if c.name == coll_name]
+            vector_count = matching_colls[0].count() if matching_colls else 0
+
+            status = "healthy"
+            if para_count > 0 and vector_count == 0:
+                status = "critical"
+                need_rebuild.append((kb_id, kb_name, para_count))
+            elif para_count > 0 and vector_count < para_count * 0.8:
+                status = "warning"
+
+            print(f"[启动检查] {kb_name}: 段落={para_count}, 向量={vector_count}, 状态={status}")
+
+        # 自动修复critical问题
+        if need_rebuild:
+            print(f"\n[启动修复] 发现 {len(need_rebuild)} 个需要重建索引的知识库")
+
+            # 加载embedding模型
+            print("[启动修复] 加载embedding模型...")
+            model = SentenceTransformer('BAAI/bge-small-zh-v1.5')
+
+            for kb_id, kb_name, para_count in need_rebuild:
+                print(f"[启动修复] 正在重建: {kb_name} ({para_count} 段落)")
+
+                try:
+                    # 获取段落数据
+                    conn = sqlite3.connect(db_path)
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        SELECT p.id, p.document_id, p.content, d.name
+                        FROM paragraph p
+                        LEFT JOIN document d ON p.document_id = d.id
+                        WHERE p.knowledge_id = ?
+                    """, (kb_id,))
+                    paragraphs = cursor.fetchall()
+                    conn.close()
+
+                    if not paragraphs:
+                        continue
+
+                    # 删除旧collection
+                    coll_name = f"kb_documents_{kb_id}"
+                    try:
+                        chroma_client.delete_collection(coll_name)
+                    except:
+                        pass
+
+                    # 创建新collection
+                    collection = chroma_client.create_collection(
+                        name=coll_name,
+                        metadata={"knowledge_name": kb_name, "hnsw:space": "cosine"}
+                    )
+
+                    # 生成embeddings
+                    texts = [p[2] for p in paragraphs]
+                    embeddings = model.encode(texts, show_progress_bar=False)
+
+                    # 添加到向量库
+                    ids = [p[0] for p in paragraphs]
+                    metadatas = [{
+                        "document_id": p[1],
+                        "knowledge_id": kb_id,
+                        "document_title": p[3] or "Unknown"
+                    } for p in paragraphs]
+
+                    collection.add(
+                        ids=ids,
+                        embeddings=embeddings.tolist(),
+                        metadatas=metadatas,
+                        documents=texts
+                    )
+
+                    print(f"[启动修复] OK {kb_name}: 已重建 {len(paragraphs)} 个向量")
+
+                except Exception as e:
+                    print(f"[启动修复] FAIL {kb_name}: 重建失败 - {e}")
+
+            print("\n[启动修复] 向量索引修复完成")
+
+        else:
+            print("[启动检查] OK 所有向量索引健康")
+
+    except Exception as e:
+        print(f"[启动检查] 检查失败: {e}")
 
 
 app = FastAPI(
@@ -71,6 +198,7 @@ app.include_router(knowledge.router, prefix="/api/v1", tags=["知识库"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 app.include_router(pm_solution.router, prefix="/api/v1/pm-solution", tags=["PM方案"])
 app.include_router(query.router, prefix="/api/v1/query", tags=["数据查询"])
+app.include_router(vector_admin.router, prefix="/api/v1/vector-admin", tags=["向量库管理"])
 
 # 图片静态文件服务（必须在catch-all路由之前）
 IMAGES_DIR = os.path.join(settings.data_dir, "images")
