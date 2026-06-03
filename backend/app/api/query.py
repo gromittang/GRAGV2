@@ -178,3 +178,30 @@ async def get_all_history(limit: int = QueryParam(default=20, ge=1, le=100)):
     service = get_query_service()
     result = await service.get_all_history(limit)
     return {"history": result, "limit": limit}
+
+
+@router.get("/schema/search")
+async def search_schema(
+    q: str = QueryParam(default="", min_length=1),
+    limit: int = QueryParam(default=10, ge=1, le=50)
+):
+    """
+    搜索Schema（表名/注释/字段）
+
+    支持按表名、表注释、字段名、字段注释搜索
+    """
+    service = get_query_service()
+    result = await service.search_schema(q, limit)
+    return result
+
+
+@router.get("/schema/table/{table_name}/fields")
+async def get_table_fields(table_name: str):
+    """
+    获取表的完整字段信息
+
+    返回字段名、类型、长度、注释
+    """
+    service = get_query_service()
+    result = await service.get_table_fields(table_name)
+    return result
