@@ -25,80 +25,18 @@
       </div>
     </header>
 
+    <!-- Timeline Stepper -->
+    <TimelineStepper
+      :phases="phases"
+      :current-phase="currentPhase"
+      :phase-statuses="phaseStatuses"
+      @select-phase="rollbackTo"
+    />
+
     <!-- Main Content -->
     <div class="flex-1 flex overflow-hidden">
-      <!-- Progress Sidebar - Card Style -->
-      <aside class="w-[220px] bg-warm-gray/30 border-r border-grid/30 flex flex-col p-5">
-        <div class="mb-4">
-          <h3 class="text-primary/60 text-xs font-medium uppercase tracking-wider">工作流程</h3>
-        </div>
-        <ul class="space-y-3">
-          <li v-for="(phase, index) in phases" :key="phase.key">
-            <div
-              @click="canRollback(index) && rollbackTo(phase.key)"
-              :class="[
-                'group relative bg-white border rounded-lg p-4 transition-all duration-200 cursor-pointer',
-                canRollback(index) ? 'hover:shadow-md hover:border-accent-orange/30' : '',
-                isCurrentPhase(index) ? 'border-accent-orange shadow-sm ring-1 ring-accent-orange/20' : 'border-grid/40',
-                isCompletedPhase(index) ? 'border-green-500/40 bg-green-50/30' : ''
-              ]"
-            >
-              <!-- Phase Number Badge -->
-              <div class="flex items-start gap-3">
-                <div
-                  class="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold transition-colors"
-                  :class="getPhaseBadgeClass(index)"
-                >
-                  {{ isCompletedPhase(index) ? '✓' : (isGeneratedPhase(index) ? '○' : index + 1) }}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div
-                    class="text-sm font-medium truncate"
-                    :class="isCurrentPhase(index) ? 'text-accent-orange' : (isGeneratedPhase(index) ? 'text-blue-500' : 'text-primary')"
-                  >
-                    {{ phase.label }}
-                  </div>
-                  <div
-                    class="text-xs mt-1 truncate"
-                    :class="getPhaseDescClass(index)"
-                  >
-                    {{ getPhaseDesc(index) }}
-                  </div>
-                </div>
-              </div>
-              <!-- Active Indicator -->
-              <div
-                v-if="isCurrentPhase(index)"
-                class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-accent-orange rounded-r"
-              ></div>
-              <!-- Completed Check -->
-              <div
-                v-if="isCompletedPhase(index) && !isCurrentPhase(index)"
-                class="absolute right-2 top-2"
-              >
-                <Icon icon="lucide:check-circle" class="text-green-500 text-sm" />
-              </div>
-              <!-- Generated indicator -->
-              <div
-                v-if="isGeneratedPhase(index) && !isCurrentPhase(index)"
-                class="absolute right-2 top-2"
-              >
-                <Icon icon="lucide:file-text" class="text-blue-500 text-sm" />
-              </div>
-            </div>
-          </li>
-        </ul>
-        <!-- Progress Summary -->
-        <div v-if="sessionId" class="mt-4 pt-4 border-t border-grid/30">
-          <div class="flex items-center justify-between text-xs">
-            <span class="text-primary/50">进度</span>
-            <span class="text-accent-orange font-medium">{{ getProgressText() }}</span>
-          </div>
-        </div>
-      </aside>
-
       <!-- Main Panel -->
-      <main class="flex-1 flex flex-col overflow-hidden p-8">
+      <main class="flex-1 flex flex-col overflow-hidden p-8 max-w-5xl mx-auto">
         <!-- Loading overlay - 现代样式 -->
         <div v-if="loading && !currentOutput" class="absolute inset-0 bg-gradient-to-br from-orange-50/80 via-white/60 to-amber-50/80 backdrop-blur-sm flex items-center justify-center z-50">
           <div class="bg-white/90 rounded-2xl shadow-lg border border-orange-100 p-8 flex flex-col items-center gap-4">
@@ -357,6 +295,7 @@ import { marked } from 'marked'
 import pmSolutionApi from '../api/pmSolution'
 import PreviewModal from '../components/knowledge/PreviewModal.vue'
 import documentsV2Api from '../api/documentsV2'
+import TimelineStepper from '../components/pm/TimelineStepper.vue'
 
 // Phase definitions - matches backend STAGE_TEMPLATES
 const phases = [
