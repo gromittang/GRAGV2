@@ -14,9 +14,9 @@
       <p class="text-[13px] text-primary/50 mb-4 leading-relaxed">
         {{ kb.description || 'WMS仓库操作手册与规范文档' }}
       </p>
-      <div class="flex items-center gap-6 font-mono text-[11px] uppercase tracking-widest text-primary/40">
-        <span>{{ kb.document_count || docCount }} DOCUMENTS</span>
-        <span>{{ kb.paragraph_count || chunkCount }} CHUNKS</span>
+      <div class="flex items-center gap-6 font-mono text-[11px] text-primary/40">
+        <span>{{ kb.document_count || docCount }} 文档数</span>
+        <span>{{ kb.paragraph_count || chunkCount }} 片段数</span>
       </div>
     </router-link>
 
