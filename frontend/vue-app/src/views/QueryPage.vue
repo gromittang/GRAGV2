@@ -28,6 +28,7 @@
           :connection-ok="store.connectionOk"
           @load-schema="store.fetchSchema()"
           @preview="store.previewTable($event)"
+          @open-window="openTableWindow($event)"
         />
         <!-- Preview data for selected table -->
         <div v-if="store.previewData" class="border-t border-grid p-4">
@@ -94,11 +95,23 @@
         </div>
       </div>
     </div>
+
+    <!-- 悬浮窗 -->
+    <FloatingWindow
+      v-for="win in floatingWindows"
+      :key="win.id"
+      :table-info="win.tableInfo"
+      :initial-x="win.x"
+      :initial-y="win.y"
+      :z-index="win.zIndex"
+      @close="closeWindow(win.id)"
+      @focus="focusWindow(win.id)"
+    />
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useQueryStore } from '../stores/query'
 import QueryInput from '../components/query/QueryInput.vue'
@@ -108,8 +121,51 @@ import SchemaBrowser from '../components/query/SchemaBrowser.vue'
 import ExportButton from '../components/query/ExportButton.vue'
 import InsightCard from '../components/query/InsightCard.vue'
 import QueryHistory from '../components/query/QueryHistory.vue'
+import FloatingWindow from '../components/query/FloatingWindow.vue'
+import schemaApi from '../api/schema'
 
 const store = useQueryStore()
+
+// 悬浮窗状态管理
+const floatingWindows = ref([])
+const maxWindows = 5
+const baseOffset = { x: 100, y: 150 }
+
+function openTableWindow(tableName) {
+  if (floatingWindows.value.length >= maxWindows) {
+    floatingWindows.value.shift()
+  }
+
+  const windowCount = floatingWindows.value.length
+  const offset = {
+    x: baseOffset.x + windowCount * 30,
+    y: baseOffset.y + windowCount * 30
+  }
+
+  const tables = store.schema?.tables || []
+  const tableInfo = tables.find(t => t.name === tableName || t.table_name === tableName) || { name: tableName }
+
+  floatingWindows.value.push({
+    id: `${tableName}-${Date.now()}`,
+    tableName,
+    tableInfo,
+    x: offset.x,
+    y: offset.y,
+    zIndex: 100 + windowCount
+  })
+}
+
+function closeWindow(windowId) {
+  floatingWindows.value = floatingWindows.value.filter(w => w.id !== windowId)
+}
+
+function focusWindow(windowId) {
+  const maxZ = Math.max(...floatingWindows.value.map(w => w.zIndex))
+  const window = floatingWindows.value.find(w => w.id === windowId)
+  if (window) {
+    window.zIndex = maxZ + 1
+  }
+}
 
 onMounted(() => {
   store.fetchSchema()
