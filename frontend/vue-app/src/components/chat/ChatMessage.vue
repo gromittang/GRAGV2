@@ -23,7 +23,10 @@
           ? 'bg-warm-gray text-primary'
           : 'bg-surface border border-grid border-l-[3px] border-l-accent-green text-primary/80'"
       >
-        <div class="whitespace-pre-wrap break-words">{{ content }}</div>
+        <!-- 用户消息保持纯文本 -->
+        <div v-if="role === 'user'" class="whitespace-pre-wrap break-words">{{ content }}</div>
+        <!-- AI消息使用MD解析 -->
+        <div v-else class="message-md-content prose prose-sm max-w-none" v-html="renderedContent"></div>
       </div>
 
       <!-- Tool tag -->
@@ -64,8 +67,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Icon } from '@iconify/vue'
+import { marked } from 'marked'
 import PreviewModal from '../knowledge/PreviewModal.vue'
 import documentsV2Api from '../../api/documentsV2'
+
+// 配置marked，禁用headerIds和mangle防止XSS
+marked.setOptions({
+  headerIds: false,
+  mangle: false
+})
 
 const props = defineProps({
   role: { type: String, default: 'assistant' },
@@ -77,6 +87,14 @@ const props = defineProps({
 // 预览状态
 const previewVisible = ref(false)
 const previewDoc = ref(null)
+
+// MD解析内容：只对assistant角色的消息进行MD解析
+const renderedContent = computed(() => {
+  if (!props.content) return ''
+  // 只对assistant角色的消息进行MD解析
+  if (props.role === 'user') return props.content
+  return marked.parse(props.content)
+})
 
 // 处理source显示：提取文档名称和document_id
 const displaySources = computed(() => {
@@ -136,5 +154,75 @@ async function openPreview(documentId) {
 @keyframes msg-in {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* MD解析内容样式 */
+.message-md-content {
+  line-height: 1.7;
+}
+.message-md-content h1,
+.message-md-content h2,
+.message-md-content h3 {
+  font-weight: 600;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+.message-md-content h3 {
+  font-size: 16px;
+}
+.message-md-content p {
+  margin-bottom: 0.8em;
+}
+.message-md-content ul,
+.message-md-content ol {
+  margin-left: 1.5em;
+  margin-bottom: 0.8em;
+}
+.message-md-content li {
+  margin-bottom: 0.3em;
+}
+.message-md-content code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+.message-md-content pre {
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
+.message-md-content pre code {
+  background: none;
+  padding: 0;
+}
+.message-md-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+}
+.message-md-content th,
+.message-md-content td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+}
+.message-md-content th {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+.message-md-content blockquote {
+  border-left: 3px solid #d1d5db;
+  padding-left: 1em;
+  color: #64748b;
+}
+.message-md-content a {
+  color: #EA580C;
+  text-decoration: underline;
+}
+.message-md-content img {
+  max-width: 100%;
+  border-radius: 4px;
 }
 </style>
