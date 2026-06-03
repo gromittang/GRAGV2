@@ -133,6 +133,84 @@ class QueryService:
         """清空当前会话历史"""
         return await clear_history_db(self._session_id)
 
+    async def search_schema(self, query: str, limit: int = 10) -> Dict:
+        """
+        搜索Schema（表名/注释/字段）
+
+        Args:
+            query: 搜索关键词
+            limit: 返回数量限制
+
+        Returns:
+            匹配的表和字段列表
+        """
+        mysql_manager = await get_mysql_manager()
+
+        # 搜索表
+        tables = await mysql_manager.get_schema_tables()
+        matched_tables = []
+        for table in tables:
+            name = table.get("table_name", "")
+            display_name = table.get("display_name", "")
+            desc = table.get("description", "")
+            if query.lower() in name.lower() or query.lower() in display_name.lower() or query.lower() in desc.lower():
+                matched_tables.append({
+                    "name": name,
+                    "display_name": display_name,
+                    "description": desc,
+                    "match_type": "table"
+                })
+
+        # 搜索字段（仅搜索前limit个表，避免性能问题）
+        matched_columns = []
+        for table in matched_tables[:limit]:
+            columns = await mysql_manager.get_schema_columns(table["name"])
+            for col in columns:
+                col_name = col.get("column_name", "")
+                col_display = col.get("display_name", "")
+                col_desc = col.get("description", "")
+                if query.lower() in col_name.lower() or query.lower() in col_display.lower() or query.lower() in col_desc.lower():
+                    matched_columns.append({
+                        "table_name": table["name"],
+                        "column_name": col_name,
+                        "display_name": col_display,
+                        "data_type": col.get("data_type", ""),
+                        "match_type": "column"
+                    })
+
+        return {
+            "tables": matched_tables[:limit],
+            "columns": matched_columns[:limit],
+            "session_id": self._session_id
+        }
+
+    async def get_table_fields(self, table_name: str) -> Dict:
+        """
+        获取表的完整字段信息
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            表信息和字段列表
+        """
+        mysql_manager = await get_mysql_manager()
+
+        # 获取字段
+        columns = await mysql_manager.get_schema_columns(table_name)
+
+        # 获取表信息
+        tables = await mysql_manager.get_schema_tables()
+        table_info = next((t for t in tables if t["table_name"] == table_name), None)
+
+        return {
+            "table_name": table_name,
+            "display_name": table_info.get("display_name", table_name) if table_info else table_name,
+            "description": table_info.get("description", "") if table_info else "",
+            "columns": columns,
+            "session_id": self._session_id
+        }
+
 
 # 单例缓存（按session_id）
 _query_services: Dict[str, QueryService] = {}
