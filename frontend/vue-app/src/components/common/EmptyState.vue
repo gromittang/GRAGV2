@@ -2,7 +2,7 @@
   <div class="flex flex-col items-center justify-center py-16 text-center">
     <Icon :icon="icon" class="text-5xl mb-3" :class="colorClass" />
     <p class="font-mono text-[11px] uppercase tracking-widest mb-2" :class="colorClass">{{ title }}</p>
-    <p v-if="description" class="text-[13px] text-primary/40 mb-4">{{ description }}</p>
+    <p v-if="description" class="text-[13px] text-slate-500 mb-4">{{ description }}</p>
     <button
       v-if="ctaText"
       @click="$emit('cta')"

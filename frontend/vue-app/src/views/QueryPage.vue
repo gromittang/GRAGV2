@@ -88,8 +88,8 @@
           <!-- Empty state -->
           <div v-if="!store.loading && !store.hasResults && !store.sql" class="py-20 text-center">
             <Icon icon="lucide:search" class="text-5xl text-grid mb-4 mx-auto" />
-            <p class="text-[14px] text-primary/50">使用自然语言查询 WMS 数据库</p>
-            <p class="text-[11px] text-primary/30 mt-1">仅支持 SELECT 查询，确保数据安全</p>
+            <p class="text-[14px] text-slate-500">使用自然语言查询 WMS 数据库</p>
+            <p class="text-[11px] text-slate-400 mt-1">仅支持 SELECT 查询，确保数据安全</p>
           </div>
         </div>
       </div>

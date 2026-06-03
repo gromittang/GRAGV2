@@ -1,7 +1,7 @@
 <template>
   <div class="border border-grid bg-surface">
     <div class="h-10 hairline-b flex items-center justify-between px-4">
-      <span class="font-mono text-[10px] uppercase text-primary/40 tracking-wider">Database Schema</span>
+      <span class="font-mono text-[10px] uppercase text-slate-500 tracking-wider">数据库结构</span>
       <span
         class="w-2 h-2 inline-flex items-center"
         :class="connectionOk === null ? '' : connectionOk ? 'text-accent-green' : 'text-red-500'"
