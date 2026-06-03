@@ -1,16 +1,15 @@
 <template>
-  <div class="grid grid-cols-2 md:grid-cols-4 border border-grid mb-10">
+  <div class="grid grid-cols-2 md:grid-cols-4 mb-10">
     <div
       v-for="(card, i) in cards"
       :key="i"
-      class="bg-warm-gray p-8"
-      :class="[i < 3 ? 'border-r border-grid' : '']"
-      :style="{ borderLeft: `3px solid ${card.color}` }"
+      class="p-8 text-white"
+      :style="{ backgroundColor: card.color }"
     >
-      <div class="font-space text-4xl font-bold text-primary mb-1 count-up">
+      <div class="font-space text-4xl font-bold mb-1 count-up">
         {{ card.displayValue }}
       </div>
-      <div class="font-mono text-[11px] uppercase tracking-widest text-primary/50">
+      <div class="text-sm opacity-90">
         {{ card.label }}
       </div>
     </div>
@@ -57,6 +56,7 @@ function animateValue(key, target) {
 const computedStats = computed(() => {
   const kbList = store.kbList || []
   return {
+    kb_count: kbList.length,
     uploaded_count: kbList.reduce((sum, kb) => sum + (kb.document_count || 0), 0),
     indexed_count: kbList.reduce((sum, kb) => sum + (kb.document_count || 0), 0), // 已索引文档数
     chunks: kbList.reduce((sum, kb) => sum + (kb.paragraph_count || 0), 0),
@@ -70,6 +70,7 @@ onMounted(() => {
 })
 
 watch(() => computedStats.value, (s) => {
+  animateValue('kb_count', s.kb_count || 0)
   animateValue('uploaded', s.uploaded_count || 0)
   animateValue('indexed', s.indexed_count || 0)
   animateValue('chunks', s.chunks || 0)
@@ -78,24 +79,24 @@ watch(() => computedStats.value, (s) => {
 
 const cards = computed(() => [
   {
-    label: 'Total Documents',
+    label: '知识库总数',
+    displayValue: displayValues.value.kb_count || '0',
+    color: '#3B82F6',  // 蓝色
+  },
+  {
+    label: '文档总计',
     displayValue: displayValues.value.uploaded || '0',
-    color: '#059669',
+    color: '#10B981',  // 绿色
   },
   {
-    label: 'Indexed Docs',
-    displayValue: displayValues.value.indexed || '0',
-    color: '#3B82F6',
-  },
-  {
-    label: 'Total Chunks',
+    label: '累计片段',
     displayValue: displayValues.value.chunks || '0',
-    color: '#7C3AED',
+    color: '#F59E0B',  // 橙色
   },
   {
-    label: 'Total Characters',
+    label: '累计字符',
     displayValue: displayValues.value.chars || '0',
-    color: '#EA580C',
+    color: '#8B5CF6',  // 紫色
   },
 ])
 </script>
