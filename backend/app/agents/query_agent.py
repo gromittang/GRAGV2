@@ -3,6 +3,7 @@
 整合Schema搜索、SQL生成、校验、执行工具链
 """
 from typing import Dict, Any, List, Optional
+import os
 import json
 import asyncio
 
@@ -11,6 +12,46 @@ from app.core.schema_manager import get_schema_manager
 from app.core.db_mysql import get_mysql_manager
 from app.agents.tools_sql import SQLValidateTool
 from app.agents.prompts_sql import INSIGHT_GENERATION_PROMPT
+
+
+# spec 目录路径（项目根目录下的 spec/）
+_SPEC_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "spec")
+)
+
+
+def _load_spec_context() -> str:
+    """读取 spec 业务规则文件，返回注入 prompt 的上下文字符串。
+
+    每次查询时动态读取，编辑 spec 文件后下一个查询立即生效。
+    读取失败时静默降级，返回空字符串，不影响查询正常执行。
+    """
+    parts = []
+
+    semantic_path = os.path.join(_SPEC_DIR, "nl2sql", "semantic-layer.md")
+    if os.path.isfile(semantic_path):
+        try:
+            with open(semantic_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            if content:
+                parts.append(content)
+        except Exception:
+            pass
+
+    sql_rules_path = os.path.join(_SPEC_DIR, "business-rules", "sql-rules.md")
+    if os.path.isfile(sql_rules_path):
+        try:
+            with open(sql_rules_path, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+            if content:
+                parts.append(content)
+        except Exception:
+            pass
+
+    if not parts:
+        return ""
+
+    return "【业务规则 - 优先级高于表结构】\n\n" + "\n\n".join(parts) + "\n\n"
 
 
 class QueryAgent:
@@ -47,6 +88,11 @@ class QueryAgent:
                 }
 
             schema_text = schema_result.get("schema_text", "")
+
+            # Step 1.5: 加载 spec 业务规则，注入到 schema 上下文前方
+            spec_context = _load_spec_context()
+            if spec_context:
+                schema_text = spec_context + "【可用表结构】\n" + schema_text
 
             # Step 2: SQL生成（使用LLM）
             from app.agents.prompts_sql import SQL_GENERATION_PROMPT
@@ -229,21 +275,19 @@ class QueryAgent:
         return self._memory.copy()
 
 
-# 单例和锁
-_query_agent: Optional[QueryAgent] = None
-_init_lock = None
+# 按 session_id 隔离 Agent 实例，避免跨会话记忆污染
+_agent_instances: Dict[str, QueryAgent] = {}
+_locks: Dict[str, asyncio.Lock] = {}
 
 
-async def get_query_agent(llm_provider: str = None) -> QueryAgent:
-    """获取Query Agent（单例）"""
-    global _query_agent, _init_lock
+async def get_query_agent(session_id: str = "default", llm_provider: str = None) -> QueryAgent:
+    """获取Query Agent（按 session_id 隔离）"""
+    if session_id not in _agent_instances:
+        if session_id not in _locks:
+            _locks[session_id] = asyncio.Lock()
 
-    if _query_agent is None:
-        if _init_lock is None:
-            _init_lock = asyncio.Lock()
+        async with _locks[session_id]:
+            if session_id not in _agent_instances:
+                _agent_instances[session_id] = QueryAgent(llm_provider)
 
-        async with _init_lock:
-            if _query_agent is None:
-                _query_agent = QueryAgent(llm_provider)
-
-    return _query_agent
+    return _agent_instances[session_id]
