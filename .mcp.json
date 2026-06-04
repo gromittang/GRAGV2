@@ -4,7 +4,10 @@
       "type": "stdio",
       "command": "code-memory",
       "args": [],
-      "env": {}
+      "env": {
+        "HF_ENDPOINT": "https://hf-mirror.com",
+        "EMBEDDING_MODEL": "all-MiniLM-L6-v2"
+      }
     }
   }
 }
