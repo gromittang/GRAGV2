@@ -52,6 +52,31 @@
           </button>
         </div>
       </div>
+
+      <!-- Source images -->
+      <div v-if="sourceImages && sourceImages.length" class="mt-3">
+        <span class="font-mono text-[9px] text-primary/30 uppercase tracking-wider">相关图片</span>
+        <div class="mt-1 flex flex-wrap gap-2">
+          <div
+            v-for="(img, i) in sourceImages"
+            :key="i"
+            class="relative cursor-pointer group"
+            @click="openImagePreview(img.url)"
+          >
+            <img
+              :src="getImageUrl(img.url)"
+              :alt="img.label"
+              class="w-24 h-24 object-cover rounded border border-grid/50 hover:border-accent-orange/50 transition-colors"
+            />
+            <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded flex items-center justify-center">
+              <Icon
+                icon="lucide:zoom-in"
+                class="text-white opacity-0 group-hover:opacity-100 transition-opacity text-lg"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Preview Modal -->
@@ -61,6 +86,25 @@
       :doc="previewDoc"
       @close="previewVisible = false"
     />
+
+    <!-- Image Preview Modal -->
+    <div
+      v-if="imagePreviewVisible"
+      class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+      @click="imagePreviewVisible = false"
+    >
+      <img
+        :src="imagePreviewUrl"
+        class="max-w-[90vw] max-h-[90vh] rounded-lg shadow-2xl"
+        @click.stop
+      />
+      <button
+        @click="imagePreviewVisible = false"
+        class="absolute top-4 right-4 text-white hover:text-gray-300"
+      >
+        <Icon icon="lucide:x" class="text-2xl" />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -87,6 +131,10 @@ const props = defineProps({
 // 预览状态
 const previewVisible = ref(false)
 const previewDoc = ref(null)
+
+// 图片预览状态
+const imagePreviewVisible = ref(false)
+const imagePreviewUrl = ref('')
 
 // MD解析内容：只对assistant角色的消息进行MD解析
 const renderedContent = computed(() => {
@@ -127,6 +175,18 @@ const displaySources = computed(() => {
   }).filter(s => s.display).slice(0, 5) // 最多显示5个
 })
 
+// 从所有sources中提取图片
+const sourceImages = computed(() => {
+  if (!props.sources) return []
+  const allImages = []
+  for (const s of props.sources) {
+    if (s.images && Array.isArray(s.images)) {
+      allImages.push(...s.images)
+    }
+  }
+  return allImages.slice(0, 10) // 最多显示10张图片
+})
+
 // 打开预览
 async function openPreview(documentId) {
   if (!documentId) {
@@ -144,6 +204,23 @@ async function openPreview(documentId) {
   } catch (e) {
     console.error('[ChatMessage] 获取文档详情失败:', e)
   }
+}
+
+// 获取图片完整URL（处理相对路径）
+function getImageUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('/')) {
+    // 相对路径，需要拼接后端地址
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    return baseUrl + url
+  }
+  return url
+}
+
+// 打开图片预览
+function openImagePreview(url) {
+  imagePreviewUrl.value = getImageUrl(url)
+  imagePreviewVisible.value = true
 }
 </script>
 
