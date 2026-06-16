@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.orchestrator.router import HybridRouter, MiniLLMRouter, RuleEngine, RouteResult
@@ -119,3 +119,45 @@ class TestHybridRouter:
         assert result.source == "fallback"
         assert result.intent == "clarify"
         assert result.clarification != ""
+
+
+class TestOrchestratorAPI:
+    @pytest.fixture
+    def mock_router(self):
+        mock_llm = MagicMock()
+        mock_llm.ainvoke = AsyncMock()
+        mock_llm.ainvoke.return_value = '{"intent":"knowledge_search","confidence":0.75}'
+        return HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
+
+    @pytest.fixture
+    def client(self, mock_router):
+        with patch("app.api.orchestrator.get_router", return_value=mock_router):
+            from app.main import app
+            from fastapi.testclient import TestClient
+            yield TestClient(app)
+
+    def test_endpoint_returns_200_and_fields(self, client):
+        response = client.post("/api/v1/orchestrator/chat",
+                               json={"question": "测试问题"})
+        assert response.status_code == 200
+        data = response.json()
+        for field in ["intent", "confidence", "source", "routed_to"]:
+            assert field in data
+
+    def test_rule_hit_returns_data_query(self, client):
+        response = client.post("/api/v1/orchestrator/chat",
+                               json={"question": "查询出库单数据"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["intent"] == "data_query"
+        assert data["source"] == "rule"
+        assert data["routed_to"] == "nl2sql"
+
+    def test_llm_fallback_for_unknown_question(self, client):
+        response = client.post("/api/v1/orchestrator/chat",
+                               json={"question": "asdfghjkl"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["intent"] == "knowledge_search"
+        assert data["source"] == "llm"
+        assert data["routed_to"] == "rag"
