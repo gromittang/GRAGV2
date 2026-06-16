@@ -1,0 +1,22 @@
+[
+  {"question":"查询最近7天的入库单","expected_intent":"data_query","category":"SQL"},
+  {"question":"上个月销售额同比增长率","expected_intent":"data_query","category":"SQL"},
+  {"question":"出库单明细","expected_intent":"data_query","category":"SQL"},
+  {"question":"库存量最高的10个商品","expected_intent":"data_query","category":"SQL"},
+  {"question":"SOP标准操作流程是什么","expected_intent":"knowledge_search","category":"RAG"},
+  {"question":"仓库安全管理制度","expected_intent":"knowledge_search","category":"RAG"},
+  {"question":"操作手册在哪里","expected_intent":"knowledge_search","category":"RAG"},
+  {"question":"合规要求有哪些","expected_intent":"knowledge_search","category":"RAG"},
+  {"question":"帮我做一个库存管理方案设计","expected_intent":"solution_design","category":"PM"},
+  {"question":"写一个仓库布局优化的PRD","expected_intent":"solution_design","category":"PM"},
+  {"question":"功能设计方案怎么做","expected_intent":"solution_design","category":"PM"},
+  {"question":"需求分析方案","expected_intent":"solution_design","category":"PM"},
+  {"question":"出库单的SOP标准核对流程","expected_intent":"hybrid","category":"Hybrid"},
+  {"question":"入库单的管理制度规定","expected_intent":"hybrid","category":"Hybrid"},
+  {"question":"拣货单的操作手册说明","expected_intent":"hybrid","category":"Hybrid"},
+  {"question":"盘点单的规范文件要求","expected_intent":"hybrid","category":"Hybrid"},
+  {"question":"管理制度","expected_intent":"knowledge_search","category":"Ambiguous"},
+  {"question":"出库","expected_intent":"data_query","category":"Ambiguous"},
+  {"question":"安全","expected_intent":"knowledge_search","category":"Ambiguous"},
+  {"question":"库存","expected_intent":"data_query","category":"Ambiguous"}
+]

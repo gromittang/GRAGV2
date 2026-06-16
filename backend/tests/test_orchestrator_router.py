@@ -121,6 +121,27 @@ class TestHybridRouter:
         assert result.clarification != ""
 
 
+import json
+from pathlib import Path
+
+
+def _load_smoke_cases():
+    path = Path(__file__).parent / "router_smoke_cases.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+class TestRouterSmoke:
+    @pytest.mark.parametrize("case", _load_smoke_cases())
+    def test_rule_engine_smoke(self, case):
+        engine = RuleEngine()
+        result = engine.classify(case["question"])
+        if result is not None:
+            assert result.intent == case["expected_intent"], (
+                f"Q: {case['question']} | expected: {case['expected_intent']} "
+                f"| got: {result.intent} | category: {case['category']}"
+            )
+
+
 class TestOrchestratorAPI:
     @pytest.fixture
     def mock_router(self):
