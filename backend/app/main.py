@@ -6,16 +6,24 @@ import os
 # 设置 HuggingFace 镜像（必须在其他导入之前）
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
+import uuid
+import time
 
 from app.config import get_settings
-from app.api import chat, documents, knowledge, agent, pm_solution, query, vector_admin
+from app.core.logging import get_logger, set_trace_id
+from app.core.tracing import (
+    set_trace_context, start_trace_writer, stop_trace_writer,
+    TraceContext, Span,
+)
+from app.api import chat, documents, knowledge, logs, orchestrator, pm_solution, query, vector_admin
 
 settings = get_settings()
+_log = get_logger("main")
 
 # 前端静态文件路径（通过配置自动检测，支持Docker和本地环境）
 FRONTEND_DIST = settings.resolved_frontend_dist_dir
@@ -24,32 +32,47 @@ FRONTEND_DIST = settings.resolved_frontend_dist_dir
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    print(f"启动 {settings.app_name} v{settings.app_version}")
+    _log.info("启动 {} v{}", settings.app_name, settings.app_version)
 
     # 初始化数据目录
     os.makedirs(settings.resolved_chroma_persist_dir, exist_ok=True)
     os.makedirs(os.path.join(settings.data_dir, "uploads"), exist_ok=True)
     os.makedirs(os.path.join(settings.data_dir, "sessions"), exist_ok=True)
-    os.makedirs(os.path.join(settings.data_dir, "images"), exist_ok=True)  # 图片目录
+    os.makedirs(os.path.join(settings.data_dir, "images"), exist_ok=True)
+    os.makedirs(os.path.join(settings.data_dir, "traces"), exist_ok=True)
+    os.makedirs(os.path.join(settings.data_dir, "logs"), exist_ok=True)
+
+    # 启动本地 trace writer
+    await start_trace_writer()
 
     # 初始化数据库
     from app.models.document import init_db
     init_db()
 
-    print(f"行业配置: {settings.industry_type}")
-    print(f"LLM Provider: {settings.llm_provider}")
+    _log.info("行业配置: {}", settings.industry_type)
+    _log.info("LLM Provider: {}", settings.llm_provider)
 
     # 初始化数据查询模块
     from app.models.query_history import init_query_history
+    from app.models.query_feedback import init_query_feedback
     init_query_history()
-    print("查询历史数据库初始化完成")
+    init_query_feedback()
+    _log.info("查询历史数据库初始化完成")
+
+    # 初始化 Chat 和 PM 反馈表
+    from app.models.chat_feedback import init_chat_feedback
+    from app.models.pm_feedback import init_pm_feedback
+    init_chat_feedback()
+    init_pm_feedback()
+    _log.info("Chat/PM 反馈数据库初始化完成")
 
     # 启动时检查向量索引健康状态
     await check_and_repair_vector_indices()
 
     yield
 
-    print("应用关闭")
+    await stop_trace_writer()
+    _log.info("应用关闭")
 
 
 async def check_and_repair_vector_indices():
@@ -58,13 +81,13 @@ async def check_and_repair_vector_indices():
     from sentence_transformers import SentenceTransformer
     from app.core.vector_store import get_vector_store_manager
 
-    print("\n[启动检查] 检查向量索引健康状态...")
+    _log.info("检查向量索引健康状态...")
 
     try:
         # 连接数据库
         db_path = os.path.join(settings.data_dir, "kb.db")
         if not os.path.exists(db_path):
-            print("[启动检查] 数据库文件不存在，跳过向量检查")
+            _log.info("数据库文件不存在，跳过向量检查")
             return
 
         conn = sqlite3.connect(db_path)
@@ -101,18 +124,18 @@ async def check_and_repair_vector_indices():
             elif para_count > 0 and vector_count < para_count * 0.8:
                 status = "warning"
 
-            print(f"[启动检查] {kb_name}: 段落={para_count}, 向量={vector_count}, 状态={status}")
+            _log.info("{}: 段落={}, 向量={}, 状态={}", kb_name, para_count, vector_count, status)
 
         # 自动修复critical问题
         if need_rebuild:
-            print(f"\n[启动修复] 发现 {len(need_rebuild)} 个需要重建索引的知识库")
+            _log.warning("发现 {} 个需要重建索引的知识库", len(need_rebuild))
 
             # 加载embedding模型
-            print("[启动修复] 加载embedding模型...")
+            _log.info("加载embedding模型...")
             model = SentenceTransformer('BAAI/bge-small-zh-v1.5')
 
             for kb_id, kb_name, para_count in need_rebuild:
-                print(f"[启动修复] 正在重建: {kb_name} ({para_count} 段落)")
+                _log.info("正在重建: {} ({} 段落)", kb_name, para_count)
 
                 try:
                     # 获取段落数据
@@ -162,18 +185,18 @@ async def check_and_repair_vector_indices():
                         documents=texts
                     )
 
-                    print(f"[启动修复] OK {kb_name}: 已重建 {len(paragraphs)} 个向量")
+                    _log.info("OK {}: 已重建 {} 个向量", kb_name, len(paragraphs))
 
                 except Exception as e:
-                    print(f"[启动修复] FAIL {kb_name}: 重建失败 - {e}")
+                    _log.error("FAIL {}: 重建失败 - {}", kb_name, e)
 
-            print("\n[启动修复] 向量索引修复完成")
+            _log.info("向量索引修复完成")
 
         else:
-            print("[启动检查] OK 所有向量索引健康")
+            _log.info("OK 所有向量索引健康")
 
     except Exception as e:
-        print(f"[启动检查] 检查失败: {e}")
+        _log.error("向量索引检查失败: {}", e)
 
 
 app = FastAPI(
@@ -191,14 +214,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def trace_middleware(request: Request, call_next):
+    """为每个 HTTP 请求创建顶层 trace span"""
+    trace_id = uuid.uuid4().hex[:16]
+    set_trace_context(trace_id)
+    set_trace_id(trace_id)
+
+    with TraceContext("http_request",
+                      method=request.method,
+                      path=request.url.path,
+                      query_params=dict(request.query_params)) as span:
+        span.set_metadata(client_ip=request.client.host if request.client else "")
+        start = time.time()
+        response = await call_next(request)
+        elapsed = (time.time() - start) * 1000
+        span.set_output(status_code=response.status_code)
+
+    response.headers["X-Trace-Id"] = trace_id
+    return response
+
 # 注册路由 - 路径匹配前端API调用
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["对话"])
 app.include_router(documents.router, prefix="/api/v1/docs", tags=["文档"])
 app.include_router(knowledge.router, prefix="/api/v1", tags=["知识库"])
-app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 app.include_router(pm_solution.router, prefix="/api/v1/pm-solution", tags=["PM方案"])
+app.include_router(logs.router, prefix="/api/v1/logs", tags=["日志查看"])
 app.include_router(query.router, prefix="/api/v1/query", tags=["数据查询"])
 app.include_router(vector_admin.router, prefix="/api/v1/vector-admin", tags=["向量库管理"])
+app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["智能助手"])
 
 # 图片静态文件服务（必须在catch-all路由之前）
 IMAGES_DIR = os.path.join(settings.data_dir, "images")
