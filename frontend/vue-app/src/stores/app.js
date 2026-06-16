@@ -7,11 +7,13 @@ export const useAppStore = defineStore('app', () => {
 
   const currentPage = computed(() => {
     const name = route.name
+    if (name === 'Orchestrator') return 'orchestrator'
     if (name === 'Chat') return 'chat'
     if (name === 'Knowledge' || name === 'KnowledgeDetail') return 'knowledge'
     if (name === 'Query') return 'query'
     if (name === 'Settings') return 'settings'
     if (name === 'PMStudio') return 'pm-studio'
+    if (name === 'Logs') return 'logs'
     return 'chat'
   })
 

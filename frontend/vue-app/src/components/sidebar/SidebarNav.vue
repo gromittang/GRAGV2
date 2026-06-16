@@ -34,10 +34,12 @@ import SessionList from './SessionList.vue'
 const store = useAppStore()
 
 const navItems = [
+  { id: 'orchestrator', label: '智能助手', icon: 'lucide:sparkles', to: '/orchestrator' },
   { id: 'chat', label: '智能问答', icon: 'lucide:message-square', to: '/chat' },
   { id: 'knowledge', label: '知识库', icon: 'lucide:database', to: '/knowledge' },
   { id: 'pm-studio', label: 'PM方案工作室', icon: 'lucide:file-text', to: '/pm-studio' },
   { id: 'query', label: '数据查询', icon: 'lucide:search', to: '/query' },
+  { id: 'logs', label: '系统日志', icon: 'lucide:scroll-text', to: '/logs' },
   { id: 'settings', label: '系统设置', icon: 'lucide:settings', to: '/settings' },
 ]
 

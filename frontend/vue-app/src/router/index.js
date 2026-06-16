@@ -6,6 +6,11 @@ const routes = [
     redirect: '/chat',
   },
   {
+    path: '/orchestrator',
+    name: 'Orchestrator',
+    component: () => import('../views/OrchestratorPage.vue'),
+  },
+  {
     path: '/chat',
     name: 'Chat',
     component: () => import('../views/ChatPage.vue'),
@@ -34,6 +39,11 @@ const routes = [
     path: '/pm-studio',
     name: 'PMStudio',
     component: () => import('../views/PMStudioPage.vue'),
+  },
+  {
+    path: '/logs',
+    name: 'Logs',
+    component: () => import('../views/LogsPage.vue'),
   },
 ]
 
