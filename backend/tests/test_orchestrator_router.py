@@ -1,5 +1,7 @@
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from app.orchestrator.router import RuleEngine, RouteResult
+from app.orchestrator.router import MiniLLMRouter, RuleEngine, RouteResult
 
 
 class TestRuleEngine:
@@ -41,3 +43,47 @@ class TestRuleEngine:
         result = self.engine.classify("hello world", rules=custom)
         assert result is not None
         assert result.intent == "test_intent"
+
+
+class TestMiniLLMRouter:
+    @pytest.fixture
+    def mock_llm(self):
+        llm = MagicMock()
+        llm.ainvoke = AsyncMock()
+        return llm
+
+    @pytest.mark.asyncio
+    async def test_data_query_classification(self, mock_llm):
+        mock_llm.ainvoke.return_value = '{"intent":"data_query","confidence":0.88}'
+        router = MiniLLMRouter(llm=mock_llm)
+        result = await router.classify("上月销售额")
+        assert result.intent == "data_query"
+        assert result.source == "llm"
+        assert result.confidence == 0.88
+
+    @pytest.mark.asyncio
+    async def test_json_parse_error(self, mock_llm):
+        mock_llm.ainvoke.return_value = "invalid json"
+        router = MiniLLMRouter(llm=mock_llm)
+        result = await router.classify("问题")
+        assert result.intent == "clarify"
+        assert result.source == "fallback"
+        assert result.error != ""
+
+    @pytest.mark.asyncio
+    async def test_low_confidence_fallback(self, mock_llm):
+        mock_llm.ainvoke.return_value = '{"intent":"data_query","confidence":0.40}'
+        router = MiniLLMRouter(llm=mock_llm)
+        result = await router.classify("模糊的问题")
+        assert result.intent == "clarify"
+        assert result.source == "fallback"
+        assert result.clarification != ""
+
+    @pytest.mark.asyncio
+    async def test_llm_exception(self, mock_llm):
+        mock_llm.ainvoke.side_effect = Exception("timeout")
+        router = MiniLLMRouter(llm=mock_llm)
+        result = await router.classify("问题")
+        assert result.intent == "clarify"
+        assert result.source == "fallback"
+        assert result.error != ""
