@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.orchestrator.router import MiniLLMRouter, RuleEngine, RouteResult
+from app.orchestrator.router import HybridRouter, MiniLLMRouter, RuleEngine, RouteResult
 
 
 class TestRuleEngine:
@@ -87,3 +87,35 @@ class TestMiniLLMRouter:
         assert result.intent == "clarify"
         assert result.source == "fallback"
         assert result.error != ""
+
+
+class TestHybridRouter:
+    @pytest.fixture
+    def mock_llm(self):
+        llm = MagicMock()
+        llm.ainvoke = AsyncMock()
+        return llm
+
+    @pytest.mark.asyncio
+    async def test_rule_takes_priority(self, mock_llm):
+        router = HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
+        result = await router.route("查询出库单数据")
+        assert result.source == "rule"
+        mock_llm.ainvoke.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_llm_when_rule_miss(self, mock_llm):
+        mock_llm.ainvoke.return_value = '{"intent":"knowledge_search","confidence":0.75}'
+        router = HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
+        result = await router.route("今天天气怎么样")
+        assert result.source == "llm"
+        assert result.intent == "knowledge_search"
+
+    @pytest.mark.asyncio
+    async def test_fallback_on_low_confidence(self, mock_llm):
+        mock_llm.ainvoke.return_value = '{"intent":"knowledge_search","confidence":0.40}'
+        router = HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
+        result = await router.route("模糊的问题文本")
+        assert result.source == "fallback"
+        assert result.intent == "clarify"
+        assert result.clarification != ""

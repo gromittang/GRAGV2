@@ -131,3 +131,25 @@ class MiniLLMRouter:
                 intent="clarify", confidence=0.0, source="fallback",
                 error=f"LLM 不可用: {str(e)[:100]}"
             )
+
+
+class HybridRouter:
+    """级联编排: RuleEngine → MiniLLMRouter → Fallback。不引入 LangGraph。"""
+
+    def __init__(self, llm_router=None):
+        self.rule_engine = RuleEngine()
+        self.llm_router = llm_router if llm_router is not None else MiniLLMRouter()
+        self._log = get_logger("orchestrator.router")
+
+    async def route(self, question: str) -> RouteResult:
+        result = self.rule_engine.classify(question)
+        if result is not None:
+            self._log.info("rule hit: intent={} question={:.60}", result.intent, question)
+            return result
+
+        result = await self.llm_router.classify(question)
+        self._log.info(
+            "llm result: intent={} confidence={:.2f} source={} question={:.60}",
+            result.intent, result.confidence, result.source, question,
+        )
+        return result
