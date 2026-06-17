@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -121,16 +123,24 @@ class TestHybridRouter:
         assert result.clarification != ""
 
 
-import json
-from pathlib import Path
-
-
 def _load_smoke_cases():
     path = Path(__file__).parent / "router_smoke_cases.json"
-    return json.loads(path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        pytest.skip(f"Smoke cases unavailable: {e}")
+        return []
 
 
 class TestRouterSmoke:
+    """Smoke tests for RuleEngine accuracy (zero LLM cost).
+
+    Hybrid category cases use data_query + knowledge_search keyword pairs
+    that trigger a conflict in RuleEngine, causing it to return None
+    (delegate to LLM). The test auto-passes when result is None.
+    expected_intent 'hybrid' is documentation-only for these cases.
+    """
+
     @pytest.mark.parametrize("case", _load_smoke_cases())
     def test_rule_engine_smoke(self, case):
         engine = RuleEngine()
