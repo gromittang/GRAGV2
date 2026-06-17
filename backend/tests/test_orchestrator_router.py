@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app.orchestrator.router import HybridRouter, MiniLLMRouter, RuleEngine, RouteResult
+from app.orchestrator.planner import Planner, PlanStep, ExecutionPlan
+from app.orchestrator.executor import execute_plan
 
 
 class TestRuleEngine:
@@ -264,3 +266,194 @@ class TestOrchestratorAPI:
         assert not data.get("error"), (
             f"成功 dispatch 不应设置 error，实际: {data.get('error')!r}"
         )
+
+
+# ============================================================
+# Phase 3: Planner + Executor tests
+# ============================================================
+
+class TestPlannerValidation:
+    """inline validator 规则测试（不需要 LLM）"""
+
+    def setup_method(self):
+        self.planner = Planner()
+
+    def _make_plan(self, steps_spec):
+        """Helper: [(intent, query, goal), ...] → ExecutionPlan"""
+        steps = [
+            PlanStep(step=i + 1, intent=intent, goal=goal, query=query)
+            for i, (intent, query, goal) in enumerate(steps_spec)
+        ]
+        return ExecutionPlan(steps=steps)
+
+    def test_valid_plan_passes(self):
+        plan = self._make_plan([
+            ("nl2sql", "查询库存", "获取数据"),
+            ("synthesize", "总结", "得出结论"),
+        ])
+        self.planner._validate(plan)  # 不应 raise
+
+    def test_empty_plan_rejected(self):
+        plan = ExecutionPlan(steps=[])
+        with pytest.raises(ValueError, match="Empty plan"):
+            self.planner._validate(plan)
+
+    def test_too_many_steps_rejected(self):
+        plan = self._make_plan([
+            ("nl2sql", f"query{i}", f"goal{i}") for i in range(6)
+        ])
+        with pytest.raises(ValueError, match="Too many steps"):
+            self.planner._validate(plan)
+
+    def test_non_consecutive_steps_rejected(self):
+        steps = [
+            PlanStep(step=1, intent="nl2sql", goal="g", query="q"),
+            PlanStep(step=3, intent="synthesize", goal="g", query="q"),
+        ]
+        plan = ExecutionPlan(steps=steps)
+        with pytest.raises(ValueError, match="1..N consecutive"):
+            self.planner._validate(plan)
+
+    def test_bad_intent_rejected(self):
+        # Bypass Pydantic Literal validation to test _validate directly
+        steps = [
+            PlanStep(step=1, intent="nl2sql", goal="g", query="q"),
+            PlanStep(step=2, intent="synthesize", goal="g", query="q"),
+        ]
+        object.__setattr__(steps[0], "intent", "invalid")
+        plan = ExecutionPlan(steps=steps)
+        with pytest.raises(ValueError, match="Unknown intent"):
+            self.planner._validate(plan)
+
+    def test_no_non_synthesize_rejected(self):
+        plan = self._make_plan([
+            ("synthesize", "综合结论", "综合结论"),
+        ])
+        with pytest.raises(ValueError, match="at least one non-synthesize"):
+            self.planner._validate(plan)
+
+    def test_last_not_synthesize_rejected(self):
+        plan = self._make_plan([
+            ("nl2sql", "查询库存", "获取数据"),
+            ("rag", "检索规范", "获取文档"),
+        ])
+        with pytest.raises(ValueError, match="Last step must be synthesize"):
+            self.planner._validate(plan)
+
+
+class TestPlannerWithLLM:
+    """Planner LLM 集成测试（mock LLM）"""
+
+    @pytest.fixture
+    def mock_llm(self):
+        llm = MagicMock()
+        llm.ainvoke = AsyncMock()
+        return llm
+
+    @pytest.mark.asyncio
+    async def test_plan_generation_valid(self, mock_llm):
+        valid_json = (
+            '{"steps":['
+            '{"step":1,"intent":"nl2sql","goal":"库存数据","query":"查询库存"},'
+            '{"step":2,"intent":"rag","goal":"规范","query":"SOP规范"},'
+            '{"step":3,"intent":"synthesize","goal":"综合分析","query":"综合得出结论"}'
+            ']}'
+        )
+        mock_llm.ainvoke.return_value = valid_json
+        planner = Planner(llm=mock_llm)
+        plan = await planner.plan("结合SOP分析库存")
+        assert len(plan.steps) == 3
+        assert plan.steps[0].intent == "nl2sql"
+        assert plan.steps[2].intent == "synthesize"
+
+    @pytest.mark.asyncio
+    async def test_plan_retry_then_succeed(self, mock_llm):
+        valid_json = (
+            '{"steps":['
+            '{"step":1,"intent":"nl2sql","goal":"数据","query":"查询数据"},'
+            '{"step":2,"intent":"synthesize","goal":"总结","query":"得出结论"}'
+            ']}'
+        )
+        # First attempt fails, second succeeds
+        mock_llm.ainvoke.side_effect = ["invalid {{{ json", valid_json]
+        planner = Planner(llm=mock_llm)
+        plan = await planner.plan("查询库存")
+        assert len(plan.steps) == 2
+        assert mock_llm.ainvoke.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_plan_exhausted_retries_fallback(self, mock_llm):
+        # All attempts fail → fallback clarify plan
+        mock_llm.ainvoke.return_value = "not json at all !!!"
+        planner = Planner(llm=mock_llm)
+        plan = await planner.plan("查询库存")
+        # Fallback: 2 steps (rag + synthesize)
+        assert len(plan.steps) == 2
+        assert plan.steps[-1].intent == "synthesize"
+        assert mock_llm.ainvoke.call_count == 2  # MAX_RETRIES + 1
+
+
+class TestExecutor:
+    """execute_plan 逐步执行 + synthesize 测试"""
+
+    @pytest.fixture
+    def mock_llm(self):
+        llm = MagicMock()
+        llm.ainvoke = AsyncMock()
+        return llm
+
+    @pytest.fixture
+    def mock_dispatch_map(self):
+        return {
+            "rag": AsyncMock(return_value={"answer": "rag answer", "sources": []}),
+            "nl2sql": AsyncMock(return_value={"sql": "SELECT 1", "data": {}, "insight": {}}),
+        }
+
+    @pytest.mark.asyncio
+    async def test_execute_plan_linear(self, mock_llm, mock_dispatch_map):
+        mock_llm.ainvoke.return_value = "综合结论"
+        plan = ExecutionPlan(steps=[
+            PlanStep(step=1, intent="nl2sql", goal="查数据", query="SELECT 1"),
+            PlanStep(step=2, intent="rag", goal="查文档", query="SOP"),
+            PlanStep(step=3, intent="synthesize", goal="总结", query="综合"),
+        ])
+        result = await execute_plan(plan, "测试问题",
+                                    llm=mock_llm, dispatch=mock_dispatch_map)
+        assert len(result["steps"]) == 3
+        assert result["steps"][0]["intent"] == "nl2sql"
+        assert result["steps"][0]["error"] is None
+        assert result["steps"][0]["result"]["sql"] == "SELECT 1"
+        assert result["steps"][1]["intent"] == "rag"
+        assert result["steps"][2]["intent"] == "synthesize"
+        assert result["synthesis"] == "综合结论"
+
+    @pytest.mark.asyncio
+    async def test_execute_plan_step_error_continues(self, mock_llm, mock_dispatch_map):
+        mock_llm.ainvoke.return_value = "部分结论"
+        failing_map = {
+            "rag": AsyncMock(side_effect=RuntimeError("rag 不可用")),
+            "nl2sql": AsyncMock(return_value={"sql": "SELECT 1", "data": {}, "insight": {}}),
+        }
+        plan = ExecutionPlan(steps=[
+            PlanStep(step=1, intent="nl2sql", goal="查数据", query="SELECT 1"),
+            PlanStep(step=2, intent="rag", goal="查文档", query="SOP"),
+            PlanStep(step=3, intent="synthesize", goal="总结", query="综合"),
+        ])
+        result = await execute_plan(plan, "测试问题",
+                                    llm=mock_llm, dispatch=failing_map)
+        assert result["steps"][0]["error"] is None     # nl2sql succeeded
+        assert result["steps"][1]["error"] is not None  # rag failed
+        assert "synthesis" in result                    # synthesis still ran
+
+    @pytest.mark.asyncio
+    async def test_execute_plan_synthesis_error(self, mock_llm, mock_dispatch_map):
+        mock_llm.ainvoke.side_effect = RuntimeError("LLM 不可用")
+        plan = ExecutionPlan(steps=[
+            PlanStep(step=1, intent="rag", goal="查文档", query="SOP"),
+            PlanStep(step=2, intent="synthesize", goal="总结", query="综合"),
+        ])
+        result = await execute_plan(plan, "测试问题",
+                                    llm=mock_llm, dispatch=mock_dispatch_map)
+        assert result["steps"][0]["error"] is None      # rag succeeded
+        assert result["steps"][1]["error"] is not None   # synthesis failed
+        assert result["synthesis"] == ""                 # empty string fallback
