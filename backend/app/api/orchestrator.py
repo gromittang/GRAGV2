@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from app.orchestrator import get_router
+from app.orchestrator.dispatch import dispatch_to_rag, dispatch_to_nl2sql, dispatch_to_pm
 from app.core.logging import get_logger
 
 router = APIRouter()
@@ -25,32 +26,6 @@ class OrchestratorResponse(BaseModel):
     data: Optional[dict] = None
     insight: Optional[dict] = None
     error: Optional[str] = None
-
-
-# === dispatch 薄函数（Iteration 1 替换为 service 层调用） ===
-
-async def _dispatch_to_rag(question: str) -> dict:
-    from app.agents.graph_rag import get_rag_graph
-    graph = get_rag_graph()
-    result = await graph.ainvoke({"question": question, "messages": []})
-    return {"answer": result.get("answer", ""), "sources": result.get("sources", [])}
-
-
-async def _dispatch_to_nl2sql(question: str) -> dict:
-    from app.agents.graph_nl2sql import get_query_graph
-    graph = get_query_graph()
-    result = await graph.ainvoke({"question": question})
-    if result.get("error"):
-        raise RuntimeError(result["error"])
-    return {
-        "sql": result.get("sql", ""),
-        "data": result.get("query_result", {}),
-        "insight": result.get("insight", {}),
-    }
-
-
-def _dispatch_to_pm() -> dict:
-    return {"routed_to": "pm"}
 
 
 # === Handler ===
@@ -78,7 +53,7 @@ async def orchestrator_chat(request: OrchestratorRequest):
         return resp
 
     if route_result.intent == "solution_design":
-        pm = _dispatch_to_pm()
+        pm = dispatch_to_pm()
         resp.routed_to = pm["routed_to"]
         resp.answer = "方案设计功能请访问 PM 方案工作室"
         return resp
@@ -96,14 +71,14 @@ async def orchestrator_chat(request: OrchestratorRequest):
     try:
         if route_result.intent == "data_query":
             resp.routed_to = "nl2sql"
-            nl2sql_result = await _dispatch_to_nl2sql(request.question)
+            nl2sql_result = await dispatch_to_nl2sql(request.question)
             resp.sql = nl2sql_result["sql"]
             resp.data = nl2sql_result["data"]
             resp.insight = nl2sql_result["insight"]
 
         elif route_result.intent == "knowledge_search":
             resp.routed_to = "rag"
-            rag_result = await _dispatch_to_rag(request.question)
+            rag_result = await dispatch_to_rag(request.question)
             resp.answer = rag_result["answer"]
             resp.sources = rag_result["sources"]
 

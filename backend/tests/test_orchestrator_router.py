@@ -209,14 +209,14 @@ class TestOrchestratorAPI:
 
     @pytest.fixture
     def mock_dispatch_rag(self):
-        """Mock _dispatch_to_rag — 返回预设 answer + sources，避免真实 graph 加载"""
+        """Mock dispatch_to_rag — 返回预设 answer + sources，避免真实 graph 加载"""
         mock = AsyncMock()
         mock.return_value = {"answer": "mock rag answer", "sources": []}
         return mock
 
     @pytest.fixture
     def mock_dispatch_nl2sql(self):
-        """Mock _dispatch_to_nl2sql — 返回预设 sql/data/insight，避免真实 graph 加载"""
+        """Mock dispatch_to_nl2sql — 返回预设 sql/data/insight，避免真实 graph 加载"""
         mock = AsyncMock()
         mock.return_value = {"sql": "SELECT 1", "data": {}, "insight": {}}
         return mock
@@ -225,8 +225,8 @@ class TestOrchestratorAPI:
     def client(self, mock_router, mock_dispatch_rag, mock_dispatch_nl2sql):
         with (
             patch("app.api.orchestrator.get_router", return_value=mock_router),
-            patch("app.api.orchestrator._dispatch_to_rag", mock_dispatch_rag),
-            patch("app.api.orchestrator._dispatch_to_nl2sql", mock_dispatch_nl2sql),
+            patch("app.api.orchestrator.dispatch_to_rag", mock_dispatch_rag),
+            patch("app.api.orchestrator.dispatch_to_nl2sql", mock_dispatch_nl2sql),
         ):
             from app.main import app
             from fastapi.testclient import TestClient
