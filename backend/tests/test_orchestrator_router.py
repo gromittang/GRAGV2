@@ -47,6 +47,53 @@ class TestRuleEngine:
         assert result.intent == "test_intent"
 
 
+class TestRuleEngineHybrid:
+    """Phase 1: HYBRID_PATTERNS 三元组规则测试"""
+
+    def setup_method(self):
+        self.engine = RuleEngine()
+
+    def test_hybrid_pattern_hit(self):
+        """verb + data_signal + doc_signal 同时出现 → hybrid"""
+        result = self.engine.classify("结合SOP分析库存异常")
+        assert result is not None
+        assert result.intent == "hybrid"
+        assert result.source == "rule"
+
+    def test_hybrid_no_false_positive_data(self):
+        """仅有 verb + data_signal，无 doc_signal → 不判 hybrid，应为 None"""
+        result = self.engine.classify("结合实际情况分析库存")
+        assert result is None, (
+            f"有 verb + data signal 但无 doc signal，规则引擎应返回 None，"
+            f"实际: intent={result.intent if result else None}"
+        )
+
+    def test_hybrid_no_false_positive_rag(self):
+        """仅有 verb + doc_signal，无 data_signal → 不判 hybrid，应为 None"""
+        result = self.engine.classify("结合SOP制度文件")
+        assert result is None, (
+            f"有 verb + doc signal 但无 data signal，规则引擎应返回 None，"
+            f"实际: intent={result.intent if result else None}"
+        )
+
+    def test_hybrid_another_verb(self):
+        """其他 cross_module_verb 的命中验证"""
+        result = self.engine.classify("根据操作手册分析入库单数据")
+        assert result is not None
+        assert result.intent == "hybrid"
+        assert result.source == "rule"
+
+    def test_hybrid_patterns_di(self):
+        """自定义 hybrid_patterns 注入（与 rules DI 同模式）"""
+        custom = [("测试动词", ["数据"], ["规范"])]
+        result = self.engine.classify(
+            "测试动词与数据和规范相关", hybrid_patterns=custom
+        )
+        assert result is not None
+        assert result.intent == "hybrid"
+        assert result.source == "rule"
+
+
 class TestMiniLLMRouter:
     @pytest.fixture
     def mock_llm(self):
@@ -161,8 +208,26 @@ class TestOrchestratorAPI:
         return HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
 
     @pytest.fixture
-    def client(self, mock_router):
-        with patch("app.api.orchestrator.get_router", return_value=mock_router):
+    def mock_dispatch_rag(self):
+        """Mock _dispatch_to_rag — 返回预设 answer + sources，避免真实 graph 加载"""
+        mock = AsyncMock()
+        mock.return_value = {"answer": "mock rag answer", "sources": []}
+        return mock
+
+    @pytest.fixture
+    def mock_dispatch_nl2sql(self):
+        """Mock _dispatch_to_nl2sql — 返回预设 sql/data/insight，避免真实 graph 加载"""
+        mock = AsyncMock()
+        mock.return_value = {"sql": "SELECT 1", "data": {}, "insight": {}}
+        return mock
+
+    @pytest.fixture
+    def client(self, mock_router, mock_dispatch_rag, mock_dispatch_nl2sql):
+        with (
+            patch("app.api.orchestrator.get_router", return_value=mock_router),
+            patch("app.api.orchestrator._dispatch_to_rag", mock_dispatch_rag),
+            patch("app.api.orchestrator._dispatch_to_nl2sql", mock_dispatch_nl2sql),
+        ):
             from app.main import app
             from fastapi.testclient import TestClient
             yield TestClient(app)
@@ -183,6 +248,10 @@ class TestOrchestratorAPI:
         assert data["intent"] == "data_query"
         assert data["source"] == "rule"
         assert data["routed_to"] == "nl2sql"
+        assert not data.get("error"), (
+            f"成功 dispatch 不应设置 error，实际: {data.get('error')!r}"
+        )
+        assert data["sql"] == "SELECT 1"
 
     def test_llm_fallback_for_unknown_question(self, client):
         response = client.post("/api/v1/orchestrator/chat",
@@ -192,3 +261,6 @@ class TestOrchestratorAPI:
         assert data["intent"] == "knowledge_search"
         assert data["source"] == "llm"
         assert data["routed_to"] == "rag"
+        assert not data.get("error"), (
+            f"成功 dispatch 不应设置 error，实际: {data.get('error')!r}"
+        )

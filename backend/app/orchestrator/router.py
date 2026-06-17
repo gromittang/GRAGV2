@@ -20,6 +20,34 @@ class RouteResult:
 class RuleEngine:
     """纯函数关键词匹配。classify() 接受可选 rules 参数用于测试注入/灰度切换。"""
 
+    # (cross_module_verb, data_signals, doc_signals)
+    # 三重约束同时命中才判 hybrid：verb + ≥1 data + ≥1 doc
+    # 注意：现有 router_smoke_cases.json 中 4 条 hybrid case（"出库单的SOP标准核对流程"等）
+    # 含有 data_signal + doc_signal 但缺少 cross_module_verb，因此不会触发 HYBRID_PATTERNS，
+    # RuleEngine 仍返回 None → LLM 判定，行为不变。
+    # 共享信号词表（所有 verb 共用，避免重复）
+    # NOTE: HYBRID_PATTERNS 在类体定义时引用 _HYBRID_*_SIGNALS（类体作用域求值）。
+    # 若子类覆盖 _HYBRID_DATA_SIGNALS / _HYBRID_DOC_SIGNALS，HYBRID_PATTERNS 不会自动更新
+    # （类体只求值一次，引用的是父类值）。当前无子类，暂不改；如需继承扩展，改为
+    # @classmethod 或 __init_subclass__ 钩子。
+    _HYBRID_DATA_SIGNALS = [
+        "数据", "统计", "查询", "记录", "明细", "指标", "报表",
+        "库存", "出库", "入库", "订单", "商品", "仓库", "数量", "金额",
+        "趋势", "汇总", "排行",
+    ]
+    _HYBRID_DOC_SIGNALS = [
+        "SOP", "规范", "制度", "手册", "流程", "文档",
+        "规定", "标准", "办法", "要求", "指南",
+    ]
+
+    HYBRID_PATTERNS: list = [
+        ("结合", _HYBRID_DATA_SIGNALS, _HYBRID_DOC_SIGNALS),
+        ("对比", _HYBRID_DATA_SIGNALS, _HYBRID_DOC_SIGNALS),
+        ("根据", _HYBRID_DATA_SIGNALS, _HYBRID_DOC_SIGNALS),
+        ("参考", _HYBRID_DATA_SIGNALS, _HYBRID_DOC_SIGNALS),
+        ("按照", _HYBRID_DATA_SIGNALS, _HYBRID_DOC_SIGNALS),
+    ]
+
     DEFAULT_RULES: dict = {
         "data_query": [
             "同比", "环比", "趋势图", "占比分布", "排名前",
@@ -42,9 +70,19 @@ class RuleEngine:
         ],
     }
 
-    def classify(self, question: str, rules: dict = None) -> Optional[RouteResult]:
-        rules = rules if rules is not None else self.DEFAULT_RULES
+    def classify(self, question: str, rules: dict = None, hybrid_patterns: list = None) -> Optional[RouteResult]:
         lower = question.lower()
+
+        # Phase 1: HYBRID_PATTERNS — 三重约束，先于 DEFAULT_RULES
+        patterns = hybrid_patterns if hybrid_patterns is not None else self.HYBRID_PATTERNS
+        for verb, data_signals, doc_signals in patterns:
+            if verb in lower:
+                has_data = any(sig.lower() in lower for sig in data_signals)
+                has_doc = any(sig.lower() in lower for sig in doc_signals)
+                if has_data and has_doc:
+                    return RouteResult(intent="hybrid", confidence=0.95, source="rule")
+
+        rules = rules if rules is not None else self.DEFAULT_RULES
         hits: List[str] = []
 
         for intent, patterns in rules.items():

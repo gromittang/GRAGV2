@@ -107,12 +107,12 @@ async def orchestrator_chat(request: OrchestratorRequest):
             resp.answer = rag_result["answer"]
             resp.sources = rag_result["sources"]
 
+        else:
+            _log.warning("unknown intent: {} source={}", route_result.intent, route_result.source)
+            resp.error = f"未知的意图类型：{route_result.intent}"
+
     except Exception as e:
         _log.warning("dispatch failed: intent={} error={:.100}", route_result.intent, str(e))
         resp.error = f"{'数据库查询' if route_result.intent == 'data_query' else '知识库检索'}失败：{str(e)[:100]}"
-
-    else:
-        _log.warning("unknown intent: {} source={}", route_result.intent, route_result.source)
-        resp.error = f"未知的意图类型：{route_result.intent}"
 
     return resp
