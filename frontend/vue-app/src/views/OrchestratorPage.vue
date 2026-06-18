@@ -113,9 +113,35 @@
           </div>
         </template>
 
-        <!-- Hybrid placeholder -->
-        <template v-if="result.routed_to === 'hybrid_placeholder'">
-          <div class="p-4 bg-warm-gray/50 border border-grid text-[14px] text-primary/70 whitespace-pre-wrap">{{ result.answer }}</div>
+        <!-- Hybrid result: steps + synthesis -->
+        <template v-if="result.routed_to === 'hybrid'">
+          <div class="space-y-3">
+            <div class="text-[11px] font-mono uppercase text-primary/40 tracking-wider">执行计划</div>
+
+            <div v-for="(s, i) in result.steps" :key="i"
+                 class="flex items-start gap-3 p-3 border"
+                 :class="s.error ? 'border-red-500/30 bg-red-500/5' : 'border-grid bg-warm-gray/30'">
+              <span class="text-[10px] font-mono text-primary/30 mt-0.5 w-4 flex-shrink-0">{{ s.step }}</span>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-[10px] font-mono font-bold px-1.5 py-0.5"
+                        :class="s.intent === 'nl2sql' ? 'bg-accent-orange/10 text-accent-orange' :
+                                s.intent === 'rag' ? 'bg-blue-500/10 text-blue-400' :
+                                'bg-green-500/10 text-green-400'"
+                  >{{ s.intent.toUpperCase() }}</span>
+                  <span class="text-[13px] text-primary/80 truncate">{{ s.goal }}</span>
+                </div>
+                <div v-if="s.error" class="text-[11px] text-red-400 mt-1">{{ s.error }}</div>
+                <div v-else class="text-[11px] text-primary/40 mt-0.5">{{ stepSummary(s) }}</div>
+              </div>
+            </div>
+
+            <div v-if="result.synthesis"
+                 class="p-4 border border-accent-orange/20 bg-accent-orange/5 space-y-2">
+              <div class="text-[11px] font-mono uppercase text-accent-orange tracking-wider">综合分析结论</div>
+              <div class="text-[14px] text-primary/80 leading-relaxed whitespace-pre-wrap">{{ result.synthesis }}</div>
+            </div>
+          </div>
         </template>
 
         <!-- PM / Direct -->
@@ -175,6 +201,19 @@ const badgeDotClass = computed(() => {
   if (result.value.source === 'fallback') return 'bg-yellow-400'
   return 'bg-accent-orange'
 })
+
+function stepSummary(s) {
+  const r = s.result || {}
+  if (s.intent === 'nl2sql') {
+    const rows = r.data?.rows?.length ?? r.data?.total ?? null
+    return rows != null ? `${rows} 行数据` : ''
+  }
+  if (s.intent === 'rag') {
+    const count = r.sources?.length ?? null
+    return count != null ? `${count} 条文档` : ''
+  }
+  return ''
+}
 
 async function send() {
   if (!question.value.trim() || loading.value) return

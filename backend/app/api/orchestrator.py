@@ -4,6 +4,8 @@ from typing import Optional
 
 from app.orchestrator import get_router
 from app.orchestrator.dispatch import dispatch_to_rag, dispatch_to_nl2sql, dispatch_to_pm
+from app.orchestrator.planner import Planner
+from app.orchestrator.executor import execute_plan
 from app.core.logging import get_logger
 
 router = APIRouter()
@@ -26,6 +28,9 @@ class OrchestratorResponse(BaseModel):
     data: Optional[dict] = None
     insight: Optional[dict] = None
     error: Optional[str] = None
+    # Iteration 1: hybrid 执行结果
+    steps: Optional[list] = None
+    synthesis: Optional[str] = None
 
 
 # === Handler ===
@@ -59,13 +64,18 @@ async def orchestrator_chat(request: OrchestratorRequest):
         return resp
 
     if route_result.intent == "hybrid":
-        resp.routed_to = "hybrid_placeholder"
-        resp.answer = (
-            "跨模块综合分析功能即将在下一版本上线。当前支持：\n"
-            "- 数据查询：直接输入业务问题\n"
-            "- 文档检索：输入SOP/规范相关问题\n"
-            "- 方案设计：访问PM方案工作室"
-        )
+        try:
+            planner = Planner()
+            plan = await planner.plan(request.question)
+            result = await execute_plan(plan, request.question)
+            resp.routed_to = "hybrid"
+            resp.steps = result["steps"]
+            resp.synthesis = result["synthesis"]
+            resp.answer = result["synthesis"]
+        except Exception as e:
+            _log.warning("hybrid execution failed: {:.100}", str(e))
+            resp.routed_to = "hybrid"
+            resp.error = f"跨模块分析失败：{str(e)[:200]}"
         return resp
 
     try:

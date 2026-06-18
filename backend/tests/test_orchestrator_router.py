@@ -268,6 +268,55 @@ class TestOrchestratorAPI:
         )
 
 
+class TestOrchestratorHybridAPI:
+    """Phase 4: hybrid 路径 → Planner → Executor 集成测试"""
+
+    @pytest.fixture
+    def mock_hybrid_router(self):
+        mock_llm = MagicMock()
+        mock_llm.ainvoke = AsyncMock()
+        mock_llm.ainvoke.return_value = '{"intent":"hybrid","confidence":0.82}'
+        return HybridRouter(llm_router=MiniLLMRouter(llm=mock_llm))
+
+    @pytest.fixture
+    def client(self, mock_hybrid_router):
+        mock_plan = ExecutionPlan(steps=[
+            PlanStep(step=1, intent="rag", goal="查文档", query="SOP"),
+            PlanStep(step=2, intent="synthesize", goal="总结", query="综合"),
+        ])
+        mock_exec_result = {
+            "steps": [
+                {"step": 1, "intent": "rag", "goal": "查文档",
+                 "result": {"answer": "mock answer"}, "error": None},
+                {"step": 2, "intent": "synthesize", "goal": "总结",
+                 "result": {"synthesis": "综合结论"}, "error": None},
+            ],
+            "synthesis": "综合结论",
+        }
+        mock_planner = MagicMock()
+        mock_planner.plan = AsyncMock(return_value=mock_plan)
+        with (
+            patch("app.api.orchestrator.get_router", return_value=mock_hybrid_router),
+            patch("app.api.orchestrator.Planner", return_value=mock_planner),
+            patch("app.api.orchestrator.execute_plan", AsyncMock(return_value=mock_exec_result)),
+        ):
+            from app.main import app
+            from fastapi.testclient import TestClient
+            yield TestClient(app)
+
+    def test_hybrid_returns_steps_and_synthesis(self, client):
+        response = client.post("/api/v1/orchestrator/chat",
+                               json={"question": "结合SOP分析库存异常"})
+        assert response.status_code == 200
+        data = response.json()
+        assert data["intent"] == "hybrid"
+        assert data["routed_to"] == "hybrid"
+        assert data["steps"] is not None
+        assert len(data["steps"]) == 2
+        assert data["synthesis"] == "综合结论"
+        assert not data.get("error")
+
+
 # ============================================================
 # Phase 3: Planner + Executor tests
 # ============================================================
