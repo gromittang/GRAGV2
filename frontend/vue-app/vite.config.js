@@ -7,11 +7,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8811',
+        target: 'http://localhost:8000',
         changeOrigin: true,
+        timeout: 600000,       // 10 min for SSE streams
+        proxyTimeout: 600000,  // 10 min for SSE streams
       },
       '/images': {
-        target: 'http://localhost:8811',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
