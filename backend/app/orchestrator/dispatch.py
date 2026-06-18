@@ -13,8 +13,12 @@ async def dispatch_to_rag(query: str) -> dict:
     """封装 graph_rag.ainvoke()。返回 {"answer": str, "sources": list}"""
     _log.info("dispatching to rag: query={:.80}", query)
     from app.agents.graph_rag import get_rag_graph
+    from app.core.observability import get_langgraph_config
     graph = get_rag_graph()
-    result = await graph.ainvoke({"question": query, "messages": []})
+    result = await graph.ainvoke(
+        {"question": query, "messages": []},
+        config=get_langgraph_config(session_id="orchestrator_rag"),
+    )
     return {"answer": result.get("answer", ""), "sources": result.get("sources", [])}
 
 
