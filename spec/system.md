@@ -6,13 +6,15 @@
 - RAG 检索增强生成
 - NL2SQL 自然语言数据查询
 - PM 方案工作室（多阶段方案设计）
+- 智能编排（Hybrid Router → Planner → Executor 跨模块管线）
 
 ## 技术栈
 
 | 层级 | 技术 |
 |------|------|
 | 前端 | Vue 3 + Pinia + TailwindCSS + Vite |
-| 后端 | FastAPI + SQLAlchemy + LlamaIndex |
+| 后端 | FastAPI + SQLAlchemy + LlamaIndex + LangChain + LangGraph |
+| 可观测性 | 本地 Trace (JSON Lines) + LangFuse (可选) |
 | LLM | DeepSeek/OpenAI/Claude (可配置) |
 | Embedding | BAAI/bge-small-zh-v1.5 |
 | 元数据库 | SQLite |
@@ -25,8 +27,9 @@
 Frontend (Vue3)
     ↓ HTTP/SSE
 FastAPI Backend
+    ├── Orchestrator → HybridRouter → Planner → Executor
     ├── RAG Service → ChromaDB + LLM
-    ├── Query Agent → MySQL + LLM  
+    ├── Query Agent → MySQL + LLM
     └── PM Service → ChromaDB + LLM
     ↓
 SQLite (元数据) + MySQL (业务)
@@ -36,6 +39,7 @@ SQLite (元数据) + MySQL (业务)
 
 | 路径 | 页面 | 说明 |
 |------|------|------|
+| `/orchestrator` | OrchestratorPage | 智能编排 |
 | `/chat` | ChatPage | 对话问答 |
 | `/knowledge` | KnowledgePage | 知识库管理 |
 | `/query` | QueryPage | 数据查询 |
@@ -75,8 +79,9 @@ SQLite (元数据) + MySQL (业务)
 
 ## 版本
 
-- 当前版本：2.0.0
-- 更新日期：2026-06-04
+- 当前版本：2.1.0
+- 更新日期：2026-06-18
+- 最近更新：Iteration 1-2 — 智能编排模块（hybrid 跨模块管线）
 
 ## NL2SQL 模块规范指引
 

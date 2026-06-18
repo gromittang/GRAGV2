@@ -7,14 +7,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 开发环境
 
 ```bash
-# 后端（从 backend/ 目录启动）
+# 一键启动/停止（Windows 双击 start.bat，或命令行）
+start.bat           # 交互菜单：启动/停止/重启/状态
+start.bat start     # 启动前后端
+start.bat stop      # 停止
+start.bat restart   # 重启
+
+# 后端（手动启动，从 backend/ 目录）
 pip install -r backend/requirements.txt
-uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8912 --reload
+uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8912 --reload
 
 # 前端（从 frontend/vue-app/ 启动）
 npm run dev          # Vite 开发服务器，端口 5173，/api 自动代理到 :8912
 npm run build        # 生产构建到 dist/
 ```
+
+> **端口说明**: 开发环境使用 8912（非默认 8000/8812）。Windows Hyper-V 会保留 8807-8906 端口段，8912 在此范围外。`start.bat` 自动处理 Python Store 占位符和 PATH 问题。
 
 ### 测试
 
@@ -46,6 +54,7 @@ docker-compose up -d
 Frontend (Vue3 + Vite, :5173)
     ↓ /api → proxy → :8912
 FastAPI Backend (:8912)
+    ├── Orchestrator → Router → Planner → Executor (hybrid pipeline)
     ├── RAG Service → ChromaDB + LLM
     ├── Query Agent → MySQL + LLM (NL2SQL)
     └── PM Service  → ChromaDB + LLM
@@ -71,6 +80,17 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
 | `domain_classifier.py` | NL2SQL 问题领域分类 |
 | `sql_post_process.py` | SQL 生成后处理（格式修正等） |
 | `agent_state.py` | LangGraph Agent 状态定义 |
+
+### orchestrator/ 模块职责
+
+| 模块 | 职责 |
+|------|------|
+| `router.py` | RuleEngine（关键词+DEFAULT_RULES+HYBRID_PATTERNS）→ MiniLLMRouter（LLM分类）→ HybridRouter（级联编排） |
+| `planner.py` | PlanStep/ExecutionPlan schema + Planner class（LLM few-shot 生成执行计划 + 内联 validator + retry/fallback） |
+| `executor.py` | `execute_plan()` 纯函数：按 plan 逐步 dispatch → 最后 synthesize。dispatch map DI 注入 |
+| `dispatch.py` | `dispatch_to_rag/nl2sql/pm()` 封装各 graph 的 ainvoke() + `DISPATCH_MAP` |
+
+**设计原则**: Contract-first（Planner 产出 ExecutionPlan → Executor 消费），DI 注入（`llm=None` / `dispatch=None`），纯函数优先（Executor 是 async for 循环）。
 
 ### 可观测性
 
@@ -101,6 +121,7 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
 
 | 模块 | 后端入口 | 前端入口 |
 |------|---------|---------|
+| 智能编排 | `backend/app/api/orchestrator.py` → `orchestrator/` | `frontend/vue-app/src/views/OrchestratorPage.vue` |
 | NL2SQL | `backend/app/agents/query_agent.py` | `frontend/vue-app/src/views/QueryPage.vue` |
 | 知识库 | `backend/app/api/documents.py` | `frontend/vue-app/src/views/KnowledgePage.vue` |
 | 智能问答 | `backend/app/api/chat.py` | `frontend/vue-app/src/views/ChatPage.vue` |
