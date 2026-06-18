@@ -12,7 +12,11 @@
 
 ## 0. Context
 
-> **Since plan creation (2026-06-18):** Task 5 的 CLAUDE.md 更新已在 commit `d99c2a2` 完成。Task 2 已修复 RAG checkpointer bug (`8b39f23`) 和 axios timeout (`39f4129`)。NL2SQL ambiguous column 错误确认属于 `query_agent.py` 范围，记录为 backlog。Task 5 范围缩减为仅 `VALID_INTENTS` 常量提取。
+> **Since plan creation (2026-06-18):** 以下变更已发生，并体现在本 plan 中：
+> - CLAUDE.md 已更新（commit `d99c2a2`）→ Task 5 范围缩减
+> - RAG checkpointer bug 已修复（`8b39f23`），axios timeout 已修复（`39f4129`）→ Task 2 预算从 30min 减至 20min（已知 bug 已修，仅剩未知 bug 和 L2 测试）
+> - NL2SQL ambiguous column 确认属于 `query_agent.py` → 记录 backlog，验证了 Scope 边界表
+> - **关键**：后续 bug 都是未发现的（discovery-driven），如果 Task 1 发现零 bug，Task 2 仅剩 L2 测试编写（10min）。如果发现架构级 bug，记录为 Iteration 3。
 
 Iteration 1 已完成的骨架：
 ```
@@ -45,7 +49,7 @@ User Input → HybridRouter.route() → intent="hybrid"
 
 **包含：**
 - 复现并记录已知 hybrid 问题
-- 修复所有发现的问题（不限范围，crash / 空白 / 错误提示 / 字段不匹配 等）
+- 修复所有发现的问题（范围限于 orchestrator 模块，参见 Task 2 的 Scope 边界表；超出边界的记录到 backlog）
 - Synthesis prompt 调优（基于真实 RAG + NL2SQL 输出）
 - 前端 hybrid 体验 polish（loading / error / 正常三种状态）
 - Tech debt 轻量清理（VALID_INTENTS 常量提取）
@@ -76,17 +80,17 @@ User Input → HybridRouter.route() → intent="hybrid"
 
 ---
 
-### Task 2: 修复所有发现的问题（30 min）
+### Task 2: 修复剩余问题 + 编写 L2 半集成测试（20 min）
 
 | 项 | 内容 |
 |----|------|
 | 目标 | 修复 Task 1 中记录的每一个 bug（限 orchestrator 范围） |
 | 涉及文件 | 根据问题定位决定，可能涉及：`executor.py` / `planner.py` / `api/orchestrator.py` / `dispatch.py` / `OrchestratorPage.vue` |
 | 内容 | ① 按 bug 严重度排序修复；② 每修一个跑相关测试确认无回归；③ 修复后浏览器重新验证 |
-| DoD | ① Bug 清单中所有项目状态为 fixed/verified；② 每个 bug fix 附带一条新增测试，该测试在不含 fix 的代码上失败（证明测试有效），含 fix 后通过；③ 新增 ≥1 条 `@pytest.mark.slow` 半集成测试：mock Planner(LLM) 但不 mock dispatch 函数，验证 `execute_plan()` + 真实 `dispatch_to_rag/nl2sql` 连通性（此类测试会暴露如 RAG checkpointer 这类 mock 无法发现的 bug）；④ 56+ tests 继续通过（含 slow marker） |
+| DoD | ① Bug 清单中所有项目状态为 fixed/verified；② 每个 bug fix 附带一条新增测试，该测试在不含 fix 的代码上失败（证明测试有效），含 fix 后通过；③ 新增 ≥1 条 `@pytest.mark.slow` 半集成测试：mock Planner(LLM) 但不 mock dispatch 函数，验证 `execute_plan()` + 真实 `dispatch_to_rag/nl2sql` 连通性（此类测试会暴露如 RAG checkpointer 这类 mock 无法发现的 bug）；④ L2 测试的 pytest marker 已在 `pytest.ini` 注册（若无则在本 task 补充），环境不可用时 `pytest.skip` 自动跳过；⑤ 56+ tests 继续通过（含 slow marker） |
 | 风险 | 中。问题可能涉及多个模块 |
 | Rollback | 每个 bug 独立 commit，出问题可单独 revert |
-| **Scope 边界** | 以下不属于 Iteration 2 范围，发现后记录到 backlog：NL2SQL agent SQL 生成逻辑 (`query_agent.py` / `graph_nl2sql.py`)；ChromaDB / MySQL 基础设施问题；Reranker 模型问题；需要大改 Iteration 1 架构的问题 |
+| **Scope 边界** | 不属于 Iteration 2 范围（发现后记录 backlog）：① NL2SQL agent SQL 生成逻辑 (`query_agent.py` / `graph_nl2sql.py`)；② ChromaDB / MySQL 基础设施问题；③ Reranker 模型问题；④ LLM 调用超时/限流（config 层）；⑤ SSE/streaming 协议问题；⑥ 性能优化（如并行步骤）；⑦ LangGraph 图定义/节点路由修改。边界模糊时用决策树：**是否只改 orchestrator/ 或 api/orchestrator.py 或 OrchestratorPage.vue？** 是→范围内；否→记录 backlog |
 
 ---
 
@@ -132,16 +136,17 @@ User Input → HybridRouter.route() → intent="hybrid"
 ## 4. Task Dependency Graph
 
 ```
-Task 1 (复现记录)
+Task 1 (复现记录) → 决策门：审查 bug 分类，超出 scope 的立即升级
   ↓
 Task 2 (修复 bug + 半集成测试) ── 依赖 Task 1 的 bug 清单
   ├→ Task 3 (synthesis prompt) ── 依赖 Task 2
-  ├→ Task 4 (前端 polish)       ── 依赖 Task 2（改不同文件，可与 Task 3 并行）
+  └→ Task 4 (前端 polish)       ── 依赖 Task 2
+  （Task 3/4 无文件冲突，可以任意顺序完成，但都需要 Task 2 修复后的真实输出做验证基准）
   ↓
 Task 5 (tech debt) ── 独立，可任意时点执行
 ```
 
-**Task 3 和 4 可并行**（改 `executor.py` vs `OrchestratorPage.vue`，无冲突）。每个 Task 独立 commit。
+**每个 Task 独立 commit。** Task 3/4 无文件重叠，但需 Task 2 的输出验证——单个开发者建议按 3→4 顺序做。
 
 ---
 
@@ -152,8 +157,7 @@ Task 5 (tech debt) ── 独立，可任意时点执行
 - [ ] Synthesis 输出引用具体步骤数据，无幻觉
 - [ ] 前端三种 hybrid 状态（loading / error / normal）均可用
 - [ ] `VALID_INTENTS` 常量提取完成
-- [ ] CLAUDE.md 已更新
-- [ ] 56 tests pass + 前端 `npm run build` 零错误
+- [ ] 56 tests pass（含新增 L2 测试） + 前端 `npm run build` 零错误
 
 ---
 
@@ -163,8 +167,11 @@ Task 5 (tech debt) ── 独立，可任意时点执行
 |------|------|
 | RAG 知识库无相关文档 → dispatch 返回空 sources | synthesis prompt 处理空结果；记录为已知限制 |
 | 远程 MySQL 查询慢 | 前端 loading 状态已覆盖 |
-| 浏览器发现的 bug 需要改多个模块 | 每个 bug 独立 commit，可 revert |
+| 浏览器发现的 bug 需要改多个模块 | 每个 bug 独立 commit，可 revert；Scope 边界决策树 |
 | synthesis LLM 编造内容 | Task 3 prompt 加"不得编造" + "必须引用"约束 |
+| **LLM 非确定性** — 调优通过一次但下次运行可能退化 | Task 3 最多 3 轮调优，然后按现状交付；DoD 已明确此为手动检查 |
+| **Task 1 发现零 bug** — 迭代退化为仅 Task 5 | 如果零 bug，Task 2 仅剩 L2 测试编写（10min）；任务顺序自动适应 |
+| **发现架构级 bug** — 需要大改 Iteration 1 | 记录为 Iteration 3，不膨胀当前 scope（Scope 边界决策树） |
 
 ---
 
@@ -261,14 +268,14 @@ pytest tests/test_orchestrator_router.py -q -m slow
 
 ### 制度要求
 
-- **每个 bug fix** → 新增 ≥1 条 L1 或 L2 测试
+- **每个 bug fix** → 附带测试（L1 或 L2，总计 ≥1 条。如 fix 多个 bug，每个 commit 至少附带 1 条新测试）
 - **每个 dispatch 路径变更** → 运行 L2 测试
-- **每次 merge 前** → 手动 L4 E2E 验证（至少 1 条 hybrid case）
+- **每次 merge 前** → 手动 L4 E2E 验证（至少 1 条 hybrid case），由开发者在 Task 3/4 中自然完成（验证 prompt 调优和前端 polish 时必然跑浏览器）
 - **L2 测试允许因环境缺失败跳过**，但不允许因代码错误跳过
 
 ---
 
-## 7. Notes
+## 8. Notes
 
 - Iteration 2 的本质是 **"让 Iteration 1 的价值真正对用户可见"**
 - 不做新功能，只做验证 + 修 bug + 轻量 polish
