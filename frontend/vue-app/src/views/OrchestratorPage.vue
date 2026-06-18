@@ -205,7 +205,7 @@ const badgeDotClass = computed(() => {
 function stepSummary(s) {
   const r = s.result || {}
   if (s.intent === 'nl2sql') {
-    const rows = r.data?.rows?.length ?? r.data?.total ?? null
+    const rows = r.data?.rows?.length ?? r.data?.count ?? r.data?.total
     return rows != null ? `${rows} 行数据` : ''
   }
   if (s.intent === 'rag') {
