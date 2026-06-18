@@ -51,10 +51,10 @@ stop_services() {
 
     # 清理端口占用 (兜底)
     echo "  检查端口占用..."
-    if netstat -ano 2>/dev/null | grep -q ":8812.*LISTEN"; then
-        echo "  端口 8812 仍被占用，尝试释放..."
-        PID=$(netstat -ano 2>/dev/null | grep ":8812.*LISTEN" | awk '{print $5}' | head -1)
-        [ -n "$PID" ] && taskkill //PID "$PID" //F 2>/dev/null && echo "  端口 8812 已释放"
+    if netstat -ano 2>/dev/null | grep -q ":8912.*LISTEN"; then
+        echo "  端口 8912 仍被占用，尝试释放..."
+        PID=$(netstat -ano 2>/dev/null | grep ":8912.*LISTEN" | awk '{print $5}' | head -1)
+        [ -n "$PID" ] && taskkill //PID "$PID" //F 2>/dev/null && echo "  端口 8912 已释放"
     fi
     if netstat -ano 2>/dev/null | grep -q ":5173.*LISTEN"; then
         echo "  端口 5173 仍被占用，尝试释放..."
@@ -86,9 +86,9 @@ start_services() {
 
     # 后端
     echo ""
-    echo "--- 后端 (FastAPI :8812) ---"
+    echo "--- 后端 (FastAPI :8912) ---"
     cd backend
-    $PYTHON -m uvicorn app.main:app --host 0.0.0.0 --port 8812 --reload &
+    $PYTHON -m uvicorn app.main:app --host 0.0.0.0 --port 8912 --reload &
     BACKEND_PID=$!
     cd ..
     echo $BACKEND_PID > "$BACKEND_PID"
@@ -97,8 +97,8 @@ start_services() {
     # 等后端就绪
     echo "  等待后端就绪..."
     for i in $(seq 1 30); do
-        if curl -s http://localhost:8812/health > /dev/null 2>&1; then
-            echo "  后端已就绪: http://localhost:8812"
+        if curl -s http://localhost:8912/health > /dev/null 2>&1; then
+            echo "  后端已就绪: http://localhost:8912"
             break
         fi
         if [ $i -eq 30 ]; then
@@ -133,8 +133,8 @@ start_services() {
     echo "=============================================="
     echo "  WMS RAG V2 开发环境已启动"
     echo "  前端: http://localhost:5173"
-    echo "  后端: http://localhost:8812"
-    echo "  API:  http://localhost:8812/api/v1"
+    echo "  后端: http://localhost:8912"
+    echo "  API:  http://localhost:8912/api/v1"
     echo "=============================================="
     echo "  运行 ./start.sh stop 停止服务"
     echo "  运行 ./start.sh restart 重启服务"
@@ -145,10 +145,10 @@ status_services() {
     echo ""
 
     # 后端
-    if curl -s http://localhost:8812/health > /dev/null 2>&1; then
-        echo "  后端 :8812 — 运行中 ✅"
+    if curl -s http://localhost:8912/health > /dev/null 2>&1; then
+        echo "  后端 :8912 — 运行中 ✅"
     else
-        echo "  后端 :8812 — 未运行 ❌"
+        echo "  后端 :8912 — 未运行 ❌"
     fi
 
     # 前端
@@ -180,7 +180,7 @@ case "${1:-start}" in
         ;;
     start|*)
         # 先检查是否已在运行
-        if curl -s http://localhost:8812/health > /dev/null 2>&1; then
+        if curl -s http://localhost:8912/health > /dev/null 2>&1; then
             echo "后端已在运行，如需重启请运行: ./start.sh restart"
             echo "运行 ./start.sh status 查看状态"
             exit 1

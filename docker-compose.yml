@@ -6,7 +6,7 @@ services:
     image: wmsrag-v2:latest
     container_name: wmsrag-v2-app
     ports:
-      - "8812:8812"
+      - "8912:8912"
     volumes:
       - wmsrag-v2-data:/app/data
       - ${RERANKER_MODEL_HOST_PATH:-/data/models/bge-reranker-v2-m3}:/app/models/bge-reranker-v2-m3:ro
@@ -14,7 +14,7 @@ services:
     environment:
       - DATA_DIR=/app/data
       - APP_ENV=production
-      - SERVER_PORT=8812
+      - SERVER_PORT=8912
       # LLM 配置
       - LLM_PROVIDER=${LLM_PROVIDER:-deepseek}
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
@@ -34,7 +34,7 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE:-wms}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8812/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8912/health"]
       interval: 30s
       timeout: 10s
       retries: 3

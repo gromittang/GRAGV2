@@ -48,7 +48,8 @@ PM方案工作室是一个智能方案设计工作流，帮助PM基于知识库�
 
 | 层级 | 技术 |
 |------|------|
-| 后端 | FastAPI + LlamaIndex + LangChain + ChromaDB + SQLite + MySQL |
+| 后端 | FastAPI + LlamaIndex + LangChain + LangGraph + ChromaDB + SQLite + MySQL |
+| 可观测性 | LangFuse |
 | 前端 | Vue 3 + Pinia + Vite + TailwindCSS |
 | LLM | DeepSeek API（支持OpenAI/Claude扩展） |
 | Embedding | BAAI/bge-small-zh-v1.5（本地部署） |
@@ -150,7 +151,7 @@ MYSQL_DATABASE=wms
 ```bash
 cd backend
 pip install -r requirements.txt
-uvicorn app.main:app --port 8812 --reload
+uvicorn app.main:app --port 8912 --reload
 ```
 
 ### 3. 前端启动
@@ -161,7 +162,7 @@ npm install
 npm run dev
 ```
 
-访问 http://localhost:8812
+访问 http://localhost:8912
 
 ### 4. Docker部署
 
@@ -252,7 +253,7 @@ MYSQL_DATABASE=wms
 
 ```bash
 # 查询示例
-curl -X POST http://localhost:8812/api/v1/query/ \
+curl -X POST http://localhost:8912/api/v1/query/ \
   -H "Content-Type: application/json" \
   -d '{"question": "查询最近5条入库单数据"}'
 

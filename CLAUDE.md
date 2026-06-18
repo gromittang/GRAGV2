@@ -1,16 +1,101 @@
 # CLAUDE.md
 
-## Spec 文件优先级
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-本项目的所有开发必须遵循 `spec/` 目录下的规范文件。在修改任何模块前，先阅读对应的 spec：
+## 常用命令
 
-| 模块 | Spec 文件 |
-|------|----------|
-| NL2SQL（数据查询） | `spec/nl2sql/semantic-layer.md`, `spec/business-rules/sql-rules.md`, `spec/workflows/nl2sql-workflow.md` |
-| RAG（知识库） | `spec/workflows/rag-workflow.md` |
-| Chat（智能问答） | `spec/workflows/chat-workflow.md` |
-| PM（方案工作室） | `spec/workflows/pmstudio-workflow.md` |
-| 全局 | `spec/system.md` |
+### 开发环境
+
+```bash
+# 后端（从 backend/ 目录启动）
+pip install -r backend/requirements.txt
+uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8912 --reload
+
+# 前端（从 frontend/vue-app/ 启动）
+npm run dev          # Vite 开发服务器，端口 5173，/api 自动代理到 :8912
+npm run build        # 生产构建到 dist/
+```
+
+### 测试
+
+```bash
+cd backend
+pytest                          # 全部测试
+pytest tests/ -k "test_name"    # 单个测试
+```
+
+### Docker 构建与推送（华为云 SWR）
+
+```bash
+# Windows 上构建 Linux 镜像并推送
+docker buildx build --platform linux/amd64 --provenance=false --sbom=false \
+  -t swr.cn-south-1.myhuaweicloud.com/ragai/ragv2:<版本号> --push .
+```
+
+`--provenance=false --sbom=false` 是必须的 — 华为云 SWR 不支持新 manifest 格式。
+
+### Docker Compose 本地部署
+
+```bash
+docker-compose up -d
+```
+
+## 架构概览
+
+```
+Frontend (Vue3 + Vite, :5173)
+    ↓ /api → proxy → :8912
+FastAPI Backend (:8912)
+    ├── RAG Service → ChromaDB + LLM
+    ├── Query Agent → MySQL + LLM (NL2SQL)
+    └── PM Service  → ChromaDB + LLM
+    ↓
+SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
+```
+
+后端入口 `backend/app/main.py` 使用 `lifespan` 管理启动/关闭：初始化数据目录、SQLite 表、向量索引健康检查、trace writer。路由前缀统一为 `/api/v1/{module}`。
+
+### core/ 模块职责
+
+| 模块 | 职责 |
+|------|------|
+| `config.py` | Pydantic Settings，自动检测前端 dist、reranker 模型路径 |
+| `logging.py` | Loguru 结构化日志，控制台彩色 + JSON lines 文件按日轮转，通过 `ContextVar` 绑定 `trace_id` |
+| `tracing.py` | 本地 trace 系统：TraceContext/Span，每个 HTTP 请求自动创建顶层 span，写入 `data/traces/` JSONL（可通过 `logs.py` API 查看） |
+| `embedding.py` | BAAI/bge-small-zh-v1.5 本地加载，HF_ENDPOINT 镜像设置 |
+| `vector_store.py` | ChromaDB 客户端管理，cosine 距离，collection 命名 `kb_documents_{kb_id}` |
+| `llm_manager.py` | 多 LLM provider 支持（DeepSeek/OpenAI/Claude 可配置切换） |
+| `db_mysql.py` | aiomysql 连接池管理（Data Copilot 用） |
+| `schema_manager.py` | MySQL Schema Embedding 索引 — 从业务库提取表/字段元数据，生成 embedding 用于 NL2SQL schema 检索 |
+| `semantic_rules.py` / `semantic_layer_loader.py` | 运行时动态加载 `spec/nl2sql/semantic-layer.md` |
+| `domain_classifier.py` | NL2SQL 问题领域分类 |
+| `sql_post_process.py` | SQL 生成后处理（格式修正等） |
+| `agent_state.py` | LangGraph Agent 状态定义 |
+
+### 可观测性
+
+- **日志**: Loguru，控制台彩色格式 + `data/logs/` JSONL（按日轮转，保留30天，error 保留90天）
+- **Trace**: 本地 JSONL trace（`data/traces/`），每个 HTTP 请求自动创建 span，响应头带 `X-Trace-Id`
+- **LangFuse**: 可选，通过 `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` 环境变量启用
+
+### 关键 Feature Flag
+
+- `use_langgraph: bool = False` — `config.py` 中控制。`false` 使用旧 Agent，`true` 使用 LangGraph 编排版本（Chat/PM/NL2SQL 均有 LangGraph 迁移 ADR）
+
+## Spec 文件体系
+
+`spec/` 目录按类型组织，开发前必须阅读对应 spec：
+
+| 目录 | 内容 |
+|------|------|
+| `spec/adr/` | 架构决策记录（RAG 设计、NL2SQL 规则、混合检索、LangGraph 迁移、本地 Tracing 等） |
+| `spec/workflows/` | 各模块完整工作流 |
+| `spec/api/` | API 规范 |
+| `spec/business-rules/` | SQL 安全规则、RAG 规则 |
+| `spec/nl2sql/` | 语义层映射规则 |
+| `spec/db/` | 数据库 schema（MySQL、SQLite、ChromaDB） |
+| `spec/evals/` | 评估标准（NL2SQL、RAG、PM Studio） |
+| `spec/system.md` | 全局系统概述 |
 
 ## 模块路由
 
@@ -20,9 +105,16 @@
 | 知识库 | `backend/app/api/documents.py` | `frontend/vue-app/src/views/KnowledgePage.vue` |
 | 智能问答 | `backend/app/api/chat.py` | `frontend/vue-app/src/views/ChatPage.vue` |
 | PM方案 | `backend/app/api/pm_solution.py` | `frontend/vue-app/src/views/PMStudioPage.vue` |
+| 系统设置 | `/config` API | `frontend/vue-app/src/views/SettingsPage.vue` |
+| 日志查看 | `backend/app/api/logs.py` | `frontend/vue-app/src/views/LogsPage.vue` |
+| 向量库管理 | `backend/app/api/vector_admin.py` | — |
 
 ## 关键约定
 
-- 后端 API 前缀: `/api/v1/{module}`
+- 后端 API 前缀: `/api/v1/{module}`，错误格式 `{"detail": "..."}` 或 `{"success": false, "error": "..."}`
 - 业务代码修改后，主动询问是否需要同步更新 `spec/` 下的对应规范文档
 - NL2SQL 的语义层规则（`semantic-layer.md`）在运行时动态加载，修改后无需重启
+- 前端 Vite dev server 通过 proxy 将 `/api` 和 `/images` 转发到 `http://localhost:8912`，SSE 超时设为 10 分钟
+- ChromaDB collection 命名: `kb_documents_{knowledge_id}`
+- 日志获取: `get_logger("模块名")` — 自动绑定 `trace_id` 到每条日志
+- 所有用户可见文本使用中文

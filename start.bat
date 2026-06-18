@@ -2,7 +2,7 @@
 title WMS Dev
 cd /d "%~dp0"
 
-set BACKEND_PORT=8000
+set BACKEND_PORT=8912
 set FRONTEND_PORT=5173
 
 :: ---------- fix Python PATH (Windows Store stub takes priority) ----------

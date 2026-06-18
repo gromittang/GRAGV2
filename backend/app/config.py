@@ -39,12 +39,40 @@ def _detect_frontend_dist() -> str:
     return ""
 
 
+def _detect_reranker_model() -> str:
+    """自动检测 Reranker 模型路径"""
+    # 1. 环境变量
+    env_path = os.environ.get("RERANKER_MODEL_PATH", "")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    # 2. Docker 生产环境
+    docker_path = "/app/models/bge-reranker-v2-m3"
+    if os.environ.get("APP_ENV") == "production" and os.path.exists(docker_path):
+        return docker_path
+
+    # 3. 本地开发环境：backend/models/bge-reranker-v2-m3
+    local_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "models", "bge-reranker-v2-m3"
+    )
+    if os.path.exists(local_path):
+        return local_path
+
+    # 4. cwd 兜底
+    cwd_path = os.path.join(os.getcwd(), "models", "bge-reranker-v2-m3")
+    if os.path.exists(cwd_path):
+        return cwd_path
+
+    return ""
+
+
 class Settings(BaseSettings):
     """应用配置"""
     # 应用基础
     app_name: str = "知识库系统"
     app_version: str = "2.0.0"
-    server_port: int = 8812
+    server_port: int = 8912
     log_level: str = "INFO"
 
     # 数据目录
@@ -100,12 +128,43 @@ class Settings(BaseSettings):
 
     # 混合检索
     use_hybrid_retrieval: bool = True  # BM25 + 向量
+    use_query_rewrite: bool = True  # LLM Query 改写
+    use_reranker: bool = True  # Reranker 重排序
+    reranker_model_path: str = ""  # 空则自动检测
+    reranker_top_k_multiplier: int = 3  # 融合时取 top_k × N 候选进 Reranker
+
+    # 相关性阈值：最高分低于此值时判定"知识库无相关内容"
+    # rerank 分阈值（sigmoid 输出，0~1，推荐配置下使用）
+    retrieval_relevance_threshold_rerank: float = 0.3
+    # 向量分阈值（余弦相似度，集中在 0.5~0.9，reranker 不可用时使用）
+    retrieval_relevance_threshold_vector: float = 0.65
+
+    # LangGraph 迁移 feature flag（false 时使用旧 Agent，true 时使用 LangGraph 版本）
+    use_langgraph: bool = False
+
+    # LangFuse 可观测性
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
+
+    # 会话持久化（LangGraph Checkpointer）
+    checkpoint_db_path: str = ""
 
     @property
     def resolved_chroma_persist_dir(self) -> str:
         if self.chroma_persist_dir:
             return self.chroma_persist_dir
         return os.path.join(self.data_dir, "chroma")
+
+    @property
+    def resolved_checkpoint_db_path(self) -> str:
+        if self.checkpoint_db_path:
+            return self.checkpoint_db_path
+        return os.path.join(self.data_dir, "checkpoints.db")
+
+    @property
+    def langfuse_enabled(self) -> bool:
+        return bool(self.langfuse_public_key and self.langfuse_secret_key)
 
     @property
     def resolved_database_url(self) -> str:
@@ -132,6 +191,13 @@ class Settings(BaseSettings):
             return self.frontend_dist_dir
         # 自动检测
         return _detect_frontend_dist()
+
+    @property
+    def resolved_reranker_model_path(self) -> str:
+        """获取 Reranker 模型路径"""
+        if self.reranker_model_path and os.path.exists(self.reranker_model_path):
+            return self.reranker_model_path
+        return _detect_reranker_model()
 
     class Config:
         env_file = ".env"
