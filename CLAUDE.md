@@ -54,13 +54,19 @@ docker-compose up -d
 Frontend (Vue3 + Vite, :5173)
     ↓ /api → proxy → :8912
 FastAPI Backend (:8912)
+    ├── DataQueryGateway (统一查询入口, executor链: MCP → Local → QueryAgent)
+    │   ├── McpExecutor → MCP Server (:8922) — 15 个预构建 WMS Tool
+    │   ├── LocalExecutor → graph_nl2sql (LangGraph NL2SQL)
+    │   └── QueryAgentExecutor → query_agent (旧版兜底, @deprecated)
     ├── Orchestrator → Router → Planner → Executor (hybrid pipeline)
     ├── RAG Service → ChromaDB + LLM
-    ├── Query Agent → MySQL + LLM (NL2SQL)
     └── PM Service  → ChromaDB + LLM
     ↓
-SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
+SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据) + MCP Server (:8922)
 ```
+
+> **Phase 2**: MCP Data Copilot 已接入。查询优先走 MCP 预构建 Tool（15个），失败自动回退 Local NL2SQL。
+> **查询追踪**: `/logs` 页面 → "查询追踪" Tab，每次查询一条记录，展开显示三层详情（概览/运维/开发）。
 
 后端入口 `backend/app/main.py` 使用 `lifespan` 管理启动/关闭：初始化数据目录、SQLite 表、向量索引健康检查、trace writer。路由前缀统一为 `/api/v1/{module}`。
 
@@ -121,8 +127,11 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
 
 | 模块 | 后端入口 | 前端入口 |
 |------|---------|---------|
+| **数据查询 (Gateway)** | `backend/app/core/data_query_gateway.py` | `frontend/vue-app/src/views/QueryPage.vue` |
 | 智能编排 | `backend/app/api/orchestrator.py` → `orchestrator/` | `frontend/vue-app/src/views/OrchestratorPage.vue` |
-| NL2SQL | `backend/app/agents/query_agent.py` | `frontend/vue-app/src/views/QueryPage.vue` |
+| **MCP Data Copilot** | `backend/app/agents/graph_mcp.py` + `backend/app/core/mcp_client.py` | — (通过 QueryPage/Orchestrator 透明接入) |
+| NL2SQL (Local) | `backend/app/agents/graph_nl2sql.py` | — (LocalExecutor 回退路径) |
+| **查询追踪** | `backend/app/api/logs.py` (type=queries) + `backend/app/models/query_history.py` | `frontend/vue-app/src/views/LogsPage.vue` ("查询追踪" Tab) |
 | 知识库 | `backend/app/api/documents.py` | `frontend/vue-app/src/views/KnowledgePage.vue` |
 | 智能问答 | `backend/app/api/chat.py` | `frontend/vue-app/src/views/ChatPage.vue` |
 | PM方案 | `backend/app/api/pm_solution.py` | `frontend/vue-app/src/views/PMStudioPage.vue` |
@@ -130,12 +139,33 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据)
 | 日志查看 | `backend/app/api/logs.py` | `frontend/vue-app/src/views/LogsPage.vue` |
 | 向量库管理 | `backend/app/api/vector_admin.py` | — |
 
+## MCP Data Copilot 配置 (Phase 2)
+
+| 端口 | 服务 |
+|------|------|
+| **8912** | WMSRAGV2 后端 (FastAPI) |
+| **8922** | MCP Data Copilot Server (独立 WMS MCP 服务) |
+| **5173** | WMSRAGV2 前端 (Vite) |
+
+**环境变量** (`.env`):
+```bash
+MCP_ENABLED=true                # 启用 MCP 主路径
+MCP_BASE_URL=http://localhost:8922
+MCP_API_KEY=gk-xxxx             # MCP Server API Key
+MCP_TIMEOUT=60.0                # 请求超时 (秒)
+```
+
+**传输协议**: MCP 2024-11-05 Streamable HTTP (SSE + Session)。
+**参考文档**: `docs/data-copilot-integration-guide.md`
+
 ## 关键约定
 
 - 后端 API 前缀: `/api/v1/{module}`，错误格式 `{"detail": "..."}` 或 `{"success": false, "error": "..."}`
 - 业务代码修改后，主动询问是否需要同步更新 `spec/` 下的对应规范文档
 - NL2SQL 的语义层规则（`semantic-layer.md`）在运行时动态加载，修改后无需重启
-- 前端 Vite dev server 通过 proxy 将 `/api` 和 `/images` 转发到 `http://localhost:8912`，SSE 超时设为 10 分钟
+- 前端 Vite dev server 通过 proxy 将 `/api` 和 `/images` 转发到 `http://localhost:8912`
+- 前端 axios 默认 timeout 120s（首查询需冷启动 schema 索引和 LLM 连接）
 - ChromaDB collection 命名: `kb_documents_{knowledge_id}`
 - 日志获取: `get_logger("模块名")` — 自动绑定 `trace_id` 到每条日志
+- 查询追踪: `query_history` 表 `trace_json` 列存储结构化追踪数据，`/logs` 页面可查看
 - 所有用户可见文本使用中文

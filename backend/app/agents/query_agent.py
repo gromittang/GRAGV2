@@ -1,5 +1,9 @@
 """
-数据查询Agent
+数据查询Agent（旧版 5 步硬编码管线）
+
+@deprecated: Phase 1 起由 DataQueryGateway 统一管理，QueryAgentExecutor 作为受限兜底。
+计划 2 个 release 后删除。
+
 整合Schema搜索、SQL生成、校验、执行工具链
 """
 from typing import Dict, Any, List, Optional
@@ -12,50 +16,23 @@ from app.core.schema_manager import get_schema_manager
 from app.core.db_mysql import get_mysql_manager
 from app.agents.tools_sql import SQLValidateTool
 from app.agents.prompts_sql import INSIGHT_GENERATION_PROMPT
-
-
-# spec 目录路径（项目根目录下的 spec/）
-_SPEC_DIR = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "spec")
+from app.core.semantic_rules import (
+    HARD_RULES as _HARD_RULES,
+    load_spec_context as _load_spec_context,
+    match_semantic_rules as _match_semantic_rules,
+    parse_insight as _parse_insight,
 )
-
-
-def _load_spec_context() -> str:
-    """读取 spec 业务规则文件，返回注入 prompt 的上下文字符串。
-
-    每次查询时动态读取，编辑 spec 文件后下一个查询立即生效。
-    读取失败时静默降级，返回空字符串，不影响查询正常执行。
-    """
-    parts = []
-
-    semantic_path = os.path.join(_SPEC_DIR, "nl2sql", "semantic-layer.md")
-    if os.path.isfile(semantic_path):
-        try:
-            with open(semantic_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-            if content:
-                parts.append(content)
-        except Exception:
-            pass
-
-    sql_rules_path = os.path.join(_SPEC_DIR, "business-rules", "sql-rules.md")
-    if os.path.isfile(sql_rules_path):
-        try:
-            with open(sql_rules_path, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-            if content:
-                parts.append(content)
-        except Exception:
-            pass
-
-    if not parts:
-        return ""
-
-    return "【业务规则 - 优先级高于表结构】\n\n" + "\n\n".join(parts) + "\n\n"
+from app.core.domain_classifier import get_domain_classifier
+from app.core.sql_post_process import inject_plu_name
 
 
 class QueryAgent:
-    """数据查询Agent"""
+    """数据查询Agent
+
+    @deprecated: 自 Phase 1 起由 DataQueryGateway 管理。
+    QueryAgentExecutor 仅作为受限兜底（满足准入条件时）。
+    不要直接实例化此类 — 请使用 DataQueryGateway.execute()。
+    """
 
     def __init__(self, llm_provider: str = None):
         self._llm = get_llm(llm_provider)
@@ -76,9 +53,23 @@ class QueryAgent:
         self._memory.append({"role": "user", "content": question})
 
         try:
-            # Step 1: Schema搜索
+            # Step 0: 领域分类（embedding + HARD_RULES fallback）
+            classifier = get_domain_classifier()
+            domain_result = classifier.classify(question)
+            domain_tables = domain_result["domain_tables"]
+
+            # HARD_RULES 强制表注入
+            forced_tables = _match_semantic_rules(question)
+            all_hint_tables = list(dict.fromkeys(domain_tables + forced_tables))
+
+            # Step 1: Schema搜索（域过滤）
             schema_manager = await get_schema_manager()
-            schema_result = await schema_manager.search_relevant_schema(question)
+            if all_hint_tables:
+                schema_result = await schema_manager.search_relevant_schema_filtered(
+                    question, table_filter=all_hint_tables
+                )
+            else:
+                schema_result = await schema_manager.search_relevant_schema(question)
 
             if not schema_result.get("tables"):
                 return {
@@ -93,6 +84,17 @@ class QueryAgent:
             spec_context = _load_spec_context()
             if spec_context:
                 schema_text = spec_context + "【可用表结构】\n" + schema_text
+
+            # Step 1.6: 强制注入优先表
+            if forced_tables:
+                forced_schema = schema_manager.get_tables_schema_text(forced_tables)
+                if forced_schema:
+                    schema_text = (
+                        "【优先表 - 硬件强制，必须优先使用】\n"
+                        + forced_schema
+                        + "\n"
+                        + schema_text
+                    )
 
             # Step 2: SQL生成（使用LLM）
             from app.agents.prompts_sql import SQL_GENERATION_PROMPT
@@ -127,6 +129,9 @@ class QueryAgent:
                 }
 
             generated_sql = sql_result.get("sql", "")
+
+            # Step 2.5: plu_name 自动注入 — 仓库用户需要同时看到商品名称
+            generated_sql = inject_plu_name(generated_sql)
 
             # Step 3: SQL校验
             validate_tool = SQLValidateTool()
@@ -206,7 +211,7 @@ class QueryAgent:
             content = response.content if hasattr(response, 'content') else str(response)
 
             # 解析Insight
-            insights = self._parse_insight(content)
+            insights = _parse_insight(content)
             return insights
         except Exception as e:
             return {
@@ -215,30 +220,6 @@ class QueryAgent:
                 "follow_ups": []
             }
 
-    def _parse_insight(self, content: str) -> Dict:
-        """解析Insight内容"""
-        lines = content.split("\n")
-        insights = []
-        follow_ups = []
-        summary = ""
-
-        for line in lines:
-            line = line.strip()
-            if line.startswith("- ") and "结论" in content[:200]:
-                insights.append(line[2:])
-            elif "追问" in line or "还想了解" in line:
-                if ":" in line:
-                    follow_part = line.split(":")[-1]
-                    follow_ups = [q.strip() for q in follow_part.replace("?", "").split(",") if q.strip()][:3]
-
-        summary = insights[0] if insights else "查询成功"
-
-        return {
-            "summary": summary,
-            "insights": insights[:3],
-            "follow_ups": follow_ups[:3],
-            "raw": content
-        }
 
     async def execute_sql(self, sql: str) -> Dict[str, Any]:
         """直接执行SQL（带校验）"""

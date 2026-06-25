@@ -23,20 +23,27 @@ async def dispatch_to_rag(query: str) -> dict:
 
 
 async def dispatch_to_nl2sql(query: str) -> dict:
-    """封装 graph_nl2sql.ainvoke()。
+    """Phase 1: Gateway 适配器 — 委托给 DataQueryGateway。
     返回 {"sql": str, "data": dict, "insight": dict}
     失败时 raise RuntimeError。
+
+    旧实现（直接调用 graph_nl2sql.ainvoke）已迁移到 Gateway 的 LocalExecutor。
     """
-    _log.info("dispatching to nl2sql: query={:.80}", query)
-    from app.agents.graph_nl2sql import get_query_graph
-    graph = get_query_graph()
-    result = await graph.ainvoke({"question": query})
-    if result.get("error"):
-        raise RuntimeError(result["error"])
+    _log.info("dispatching to nl2sql (via Gateway): query={:.80}", query)
+    from app.core.data_query_gateway import get_gateway
+
+    gateway = get_gateway()
+    result = await gateway.execute(query)
+    if not result.success:
+        raise RuntimeError(result.error_message or "NL2SQL 查询失败")
     return {
-        "sql": result.get("sql", ""),
-        "data": result.get("query_result", {}),
-        "insight": result.get("insight", {}),
+        "sql": result.sql or "",
+        "data": {"columns": result.columns, "rows": result.rows, "total": result.total},
+        "insight": {
+            "summary": result.insight.summary if result.insight else "",
+            "insights": result.insight.insights if result.insight else [],
+            "follow_ups": result.insight.follow_ups if result.insight else [],
+        },
     }
 
 

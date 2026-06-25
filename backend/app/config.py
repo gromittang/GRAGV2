@@ -139,8 +139,18 @@ class Settings(BaseSettings):
     # 向量分阈值（余弦相似度，集中在 0.5~0.9，reranker 不可用时使用）
     retrieval_relevance_threshold_vector: float = 0.65
 
-    # LangGraph 迁移 feature flag（false 时使用旧 Agent，true 时使用 LangGraph 版本）
-    use_langgraph: bool = False
+    # LangGraph 迁移已完成 — use_langgraph flag 已废弃。
+    # Phase 1: DataQueryGateway 内部通过 Executor 优先级决定路径，
+    # 不再需要此 flag。保留注释以免后续 git blame 混淆。
+    # use_langgraph: bool = False  # REMOVED in Phase 1
+
+    # ── MCP Data Copilot (Phase 2) ──
+    mcp_enabled: bool = False
+    mcp_base_url: str = "http://localhost:8922"
+    mcp_api_key: str = ""
+    mcp_timeout: float = 60.0
+    mcp_tool_cache_ttl: int = 300       # Tool 列表缓存 TTL（秒）
+    mcp_health_cache_ttl: int = 30      # 健康检查缓存 TTL（秒）
 
     # LangFuse 可观测性
     langfuse_public_key: str = ""

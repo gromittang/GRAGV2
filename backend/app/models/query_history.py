@@ -31,10 +31,16 @@ async def init_history_db():
                 result_count INTEGER DEFAULT 0,
                 insight TEXT,
                 tables_used TEXT,
+                trace_json TEXT,
                 favorite INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL
             )
         """)
+        # 迁移：旧表无 trace_json 列则自动追加
+        try:
+            await db.execute("ALTER TABLE query_history ADD COLUMN trace_json TEXT")
+        except Exception:
+            pass  # 列已存在，忽略
         await db.execute("""
             CREATE INDEX IF NOT EXISTS idx_session_id ON query_history(session_id)
         """)
@@ -51,8 +57,9 @@ async def save_history(item: Dict) -> int:
     async with aiosqlite.connect(HISTORY_DB_PATH) as db:
         cursor = await db.execute("""
             INSERT INTO query_history
-            (session_id, question, sql, result_count, insight, tables_used, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (session_id, question, sql, result_count, insight, tables_used,
+             trace_json, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             item.get("session_id"),
             item.get("question"),
@@ -60,6 +67,7 @@ async def save_history(item: Dict) -> int:
             item.get("result_count", 0),
             item.get("insight", ""),
             item.get("tables_used", "[]"),
+            item.get("trace_json", "{}"),
             item.get("created_at", datetime.now().isoformat())
         ])
         await db.commit()
@@ -137,10 +145,15 @@ def init_query_history():
             result_count INTEGER DEFAULT 0,
             insight TEXT,
             tables_used TEXT,
+            trace_json TEXT,
             favorite INTEGER DEFAULT 0,
             created_at TEXT NOT NULL
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE query_history ADD COLUMN trace_json TEXT")
+    except Exception:
+        pass
     cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_session_id ON query_history(session_id)
     """)

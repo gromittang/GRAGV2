@@ -3,10 +3,12 @@
 NL2SQL、Schema浏览、历史管理等端点
 """
 from fastapi import APIRouter, HTTPException, Query as QueryParam
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 
 from app.services.query_service import get_query_service
+from app.models.query_feedback import save_feedback, get_feedback_stats
 
 router = APIRouter()
 
@@ -53,7 +55,10 @@ async def natural_query(request: QueryRequest):
     if not result.get("success"):
         raise HTTPException(status_code=400, detail=result.get("error", "查询失败"))
 
-    return result
+    return JSONResponse(
+        content=result,
+        headers={"X-Query-Source": result.get("source", "unknown")},
+    )
 
 
 @router.post("/execute")
@@ -178,6 +183,44 @@ async def get_all_history(limit: int = QueryParam(default=20, ge=1, le=100)):
     service = get_query_service()
     result = await service.get_all_history(limit)
     return {"history": result, "limit": limit}
+
+
+class FeedbackRequest(BaseModel):
+    """查询反馈请求"""
+    history_id: int
+    session_id: str
+    question: str = ""
+    sql: str = ""
+    tables_used: Optional[str] = None
+    table_correct: bool = True
+    field_correct: bool = True
+    result_correct: bool = True
+    comment: Optional[str] = None
+
+
+@router.post("/feedback")
+async def submit_feedback(request: FeedbackRequest):
+    """提交查询评价"""
+    item = {
+        "history_id": request.history_id,
+        "session_id": request.session_id,
+        "question": request.question,
+        "sql": request.sql,
+        "tables_used": request.tables_used or "[]",
+        "table_correct": request.table_correct,
+        "field_correct": request.field_correct,
+        "result_correct": request.result_correct,
+        "comment": request.comment or "",
+    }
+    feedback_id = await save_feedback(item)
+    return {"success": True, "feedback_id": feedback_id}
+
+
+@router.get("/feedback/stats")
+async def feedback_stats():
+    """获取反馈统计"""
+    stats = await get_feedback_stats()
+    return stats
 
 
 @router.get("/schema/search")
