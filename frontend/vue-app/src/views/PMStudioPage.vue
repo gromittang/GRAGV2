@@ -275,7 +275,7 @@
                   </span>
                   <button
                     @click.stop="deleteSession(item.id)"
-                    class="text-grid hover:text-red-500 p-1"
+                    class="text-grid hover:text-danger p-1"
                   >
                     <Icon icon="lucide:trash-2" />
                   </button>

@@ -150,7 +150,7 @@
                 </td>
                 <td class="py-1.5 text-center">
                   <span v-if="q.trace?.pipeline?.success === true" class="text-emerald-500">OK</span>
-                  <span v-else-if="q.trace?.pipeline?.success === false" class="text-red-500">FAIL</span>
+                  <span v-else-if="q.trace?.pipeline?.success === false" class="text-danger">FAIL</span>
                   <span v-else class="text-primary/30">-</span>
                 </td>
               </tr>
@@ -175,7 +175,7 @@
                           · 返回 <span class="text-primary/80">{{ q.result_count ?? q.trace?.pipeline?.total ?? '-' }}</span> 条
                         </div>
                         <div v-if="q.trace?.pipeline?.error_code">
-                          错误: <span class="text-red-500">{{ q.trace.pipeline.error_code }}</span>
+                          错误: <span class="text-danger">{{ q.trace.pipeline.error_code }}</span>
                           <span v-if="q.trace.pipeline.error_message" class="text-primary/40"> — {{ q.trace.pipeline.error_message }}</span>
                         </div>
                       </div>
@@ -188,7 +188,7 @@
                         <span class="font-medium text-primary/80">运维信息</span>
                       </div>
                       <div class="space-y-1 text-primary/60 pl-6">
-                        <div>熔断器: <span :class="q.trace?.ops_view?.circuit_breaker?.includes('OPEN') ? 'text-red-500' : 'text-emerald-500'">{{ q.trace?.ops_view?.circuit_breaker || '-' }}</span></div>
+                        <div>熔断器: <span :class="q.trace?.ops_view?.circuit_breaker?.includes('OPEN') ? 'text-danger' : 'text-emerald-500'">{{ q.trace?.ops_view?.circuit_breaker || '-' }}</span></div>
                         <div>
                           触发回退:
                           <span v-if="q.trace?.ops_view?.fallback_triggered" class="text-amber-500">是</span>
@@ -346,7 +346,7 @@ function formatTime(ts) {
 
 function levelClass(level) {
   switch (level) {
-    case 'ERROR': return 'text-red-500'
+    case 'ERROR': return 'text-danger'
     case 'WARNING': return 'text-amber-500'
     case 'INFO': return 'text-emerald-500'
     case 'DEBUG': return 'text-primary/30'

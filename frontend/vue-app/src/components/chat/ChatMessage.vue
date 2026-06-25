@@ -93,7 +93,7 @@
           </button>
           <button
             @click="feedbackRating.helpful = false; feedbackExpanded = true"
-            :class="feedbackExpanded && !feedbackRating.helpful ? 'border-danger/20 text-danger bg-danger-soft' : 'border-grid/50 text-primary/40 hover:border-danger/20 hover:text-red-400'"
+            :class="feedbackExpanded && !feedbackRating.helpful ? 'border-danger/20 text-danger bg-danger-soft' : 'border-grid/50 text-primary/40 hover:border-danger/20 hover:text-danger'"
             class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono border transition-colors"
           >
             <Icon icon="lucide:thumbs-down" class="text-xs" />

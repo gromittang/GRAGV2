@@ -1,7 +1,7 @@
 <template>
   <div
     class="grid grid-cols-[40px_1fr_120px_100px] h-[44px] items-center px-4 hairline-b transition-colors group"
-    :class="even ? 'bg-slate-50/50' : 'bg-surface'"
+    :class="even ? 'bg-warm-gray/50' : 'bg-surface'"
   >
     <!-- Checkbox -->
     <div class="flex items-center">
@@ -53,7 +53,7 @@
       </button>
       <button
         @click="$emit('delete')"
-        class="w-8 h-8 flex items-center justify-center hover:bg-red-50 border border-transparent hover:border-red-200 transition-all group/del"
+        class="w-8 h-8 flex items-center justify-center hover:bg-danger-soft border border-transparent hover:border-danger/20 transition-all group/del"
         title="删除"
       >
         <Icon icon="lucide:trash-2" class="text-[16px] text-accent-orange opacity-60 group-hover/del:opacity-100" />

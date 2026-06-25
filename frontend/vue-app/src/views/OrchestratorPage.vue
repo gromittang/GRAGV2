@@ -120,7 +120,7 @@
 
             <div v-for="(s, i) in result.steps" :key="i"
                  class="flex items-start gap-3 p-3 border"
-                 :class="s.error ? 'border-red-500/30 bg-red-500/5' : 'border-grid bg-warm-gray/30'">
+                 :class="s.error ? 'border-danger/20 bg-danger/5' : 'border-grid bg-warm-gray/30'">
               <span class="text-[10px] font-mono text-primary/30 mt-0.5 w-4 flex-shrink-0">{{ s.step }}</span>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-0.5">
@@ -131,7 +131,7 @@
                   >{{ s.intent.toUpperCase() }}</span>
                   <span class="text-[13px] text-primary/80 truncate">{{ s.goal }}</span>
                 </div>
-                <div v-if="s.error" class="text-[11px] text-red-400 mt-1">{{ s.error }}</div>
+                <div v-if="s.error" class="text-[11px] text-danger mt-1">{{ s.error }}</div>
                 <div v-else class="text-[11px] text-primary/40 mt-0.5">{{ stepSummary(s) }}</div>
               </div>
             </div>
@@ -190,14 +190,14 @@ const sourceLabel = computed(() => SOURCE_LABELS[result.value?.source] || '')
 
 const badgeClass = computed(() => {
   if (!result.value) return ''
-  if (result.value.error) return 'text-red-400 bg-red-500/10 border border-red-500/20'
+  if (result.value.error) return 'text-danger bg-danger/10 border border-danger/20'
   if (result.value.source === 'fallback') return 'text-yellow-400 bg-yellow-500/10 border border-yellow-500/20'
   return 'text-accent-orange bg-accent-orange/10 border border-accent-orange/20'
 })
 
 const badgeDotClass = computed(() => {
   if (!result.value) return ''
-  if (result.value.error) return 'bg-red-400'
+  if (result.value.error) return 'bg-danger'
   if (result.value.source === 'fallback') return 'bg-yellow-400'
   return 'bg-accent-orange'
 })

@@ -10,7 +10,7 @@
       <span class="truncate flex-1">{{ session.title || '新对话' }}</span>
       <button
         @click.stop="store.deleteSession(session.session_id)"
-        class="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-400 transition-all ml-1 flex-shrink-0"
+        class="opacity-0 group-hover:opacity-100 text-white/30 hover:text-danger transition-all ml-1 flex-shrink-0"
         title="删除会话"
       >
         <Icon icon="lucide:x" class="text-[14px]" />

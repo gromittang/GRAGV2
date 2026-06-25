@@ -117,7 +117,7 @@
       :title="kbDeleteConfirm.title"
       :message="kbDeleteConfirm.message"
       confirm-text="删除知识库"
-      confirm-class="bg-red-600 hover:bg-red-700"
+      confirm-class="bg-danger hover:opacity-90"
       @confirm="executeKBDelete"
       @cancel="kbDeleteConfirm.visible = false"
     />

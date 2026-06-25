@@ -23,7 +23,7 @@
       <div v-if="loading" class="flex items-center justify-center h-full">
         <span class="text-primary/40">加载中...</span>
       </div>
-      <div v-else-if="error" class="text-red-500 text-sm p-4">{{ error }}</div>
+      <div v-else-if="error" class="text-danger text-sm p-4">{{ error }}</div>
       <div v-else class="overflow-auto">
         <!-- 表描述 -->
         <div v-if="tableInfo.description" class="px-4 py-2 bg-warm-gray text-xs text-primary/60">

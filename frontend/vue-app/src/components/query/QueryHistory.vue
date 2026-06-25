@@ -3,7 +3,7 @@
     <div class="h-10 hairline-b flex items-center justify-between px-4">
       <span class="font-mono text-[10px] uppercase text-primary/40 tracking-wider">查询历史</span>
       <button @click="$emit('clear')"
-              class="text-[11px] text-primary/30 hover:text-red-500 transition-colors">
+              class="text-[11px] text-primary/30 hover:text-danger transition-colors">
         清空
       </button>
     </div>
