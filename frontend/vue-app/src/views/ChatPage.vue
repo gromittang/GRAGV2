@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="h-20 hairline-b flex items-center justify-between px-12 flex-shrink-0 bg-paper z-40">
       <div class="flex items-center gap-4">
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">智能问答</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">智能问答</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
         <span class="font-mono text-[12px] uppercase text-accent-orange tracking-widest font-bold">Agent</span>
       </div>

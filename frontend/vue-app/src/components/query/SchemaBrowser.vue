@@ -1,13 +1,13 @@
 <template>
   <div class="border border-grid bg-surface">
     <div class="h-10 hairline-b flex items-center justify-between px-4">
-      <span class="font-mono text-[10px] uppercase text-slate-500 tracking-wider">数据库结构</span>
+      <span class="font-mono text-[10px] uppercase text-tertiary tracking-wider">数据库结构</span>
       <span
         class="w-2 h-2 inline-flex items-center"
-        :class="connectionOk === null ? '' : connectionOk ? 'text-accent-green' : 'text-red-500'"
+        :class="connectionOk === null ? '' : connectionOk ? 'text-accent-green' : 'text-danger'"
         :title="connectionOk ? '已连接' : connectionOk === false ? '连接断开' : '未知'"
       >
-        <span class="w-2 h-2 rounded-full" :class="connectionOk === null ? 'bg-grid' : connectionOk ? 'bg-accent-green' : 'bg-red-500'"></span>
+        <span class="w-2 h-2 rounded-full" :class="connectionOk === null ? 'bg-grid' : connectionOk ? 'bg-accent-green' : 'bg-danger'"></span>
       </span>
     </div>
 

@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="h-20 hairline-b flex items-center px-12 flex-shrink-0 bg-paper z-40">
       <div class="flex items-center gap-4">
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">智能助手</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">智能助手</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
         <span class="font-mono text-[12px] uppercase text-accent-orange tracking-widest font-bold">Orchestrator</span>
       </div>
@@ -17,13 +17,13 @@
             v-model="question"
             @keydown.enter="send"
             placeholder="输入您的问题，例如：查询最近入库单、SOP操作规范、设计方案..."
-            class="flex-1 px-4 py-3 bg-warm-gray border border-grid text-[15px] text-primary placeholder:text-primary/30 focus:outline-none focus:border-accent-orange transition-colors"
+            class="flex-1 px-4 py-3 bg-warm-gray border border-grid rounded text-[15px] text-primary placeholder:text-tertiary focus:outline-none focus:border-accent-orange/40 focus:shadow-glow transition-all duration-150 ease-out-expo"
             :disabled="loading"
           />
           <button
             @click="send"
             :disabled="loading || !question.trim()"
-            class="px-6 py-3 bg-accent-orange text-white text-[14px] font-medium hover:bg-accent-orange/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            class="px-6 py-3 bg-accent-orange text-white rounded text-[14px] font-semibold hover:bg-accent-orange-hover transition-all duration-150 ease-spring disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
           >发送</button>
         </div>
       </div>
@@ -55,7 +55,7 @@
         </div>
 
         <!-- Error -->
-        <div v-if="result.error" class="p-4 border border-red-500/30 bg-red-500/5 text-red-400 text-[13px]">
+        <div v-if="result.error" class="p-4 border border-danger/20 bg-danger-soft rounded text-danger text-[13px]">
           {{ result.error }}
         </div>
 

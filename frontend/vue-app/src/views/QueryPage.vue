@@ -3,13 +3,13 @@
     <!-- Header -->
     <header class="h-20 hairline-b flex items-center justify-between px-12 sticky top-0 bg-paper z-40">
       <div class="flex items-center gap-4">
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">数据查询</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">数据查询</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
         <span class="font-mono text-[12px] uppercase text-accent-orange tracking-widest font-bold">NL2SQL</span>
       </div>
       <div class="flex items-center gap-2">
         <span class="flex items-center gap-1.5 font-mono text-[10px] text-primary/40">
-          <span class="w-2 h-2" :class="store.connectionOk ? 'bg-accent-green' : store.connectionOk === false ? 'bg-red-500' : 'bg-grid'"></span>
+          <span class="w-2 h-2" :class="store.connectionOk ? 'bg-accent-green' : store.connectionOk === false ? 'bg-danger' : 'bg-grid'"></span>
           {{ store.connectionOk ? 'MySQL 已连接' : store.connectionOk === false ? 'MySQL 断开' : 'MySQL 未知' }}
         </span>
         <button
@@ -22,7 +22,7 @@
     <!-- Content: split layout with schema sidebar -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Schema Browser Sidebar -->
-      <aside class="w-[280px] border-r border-grid overflow-y-auto bg-warm-gray/30 flex-shrink-0">
+      <aside class="w-[220px] border-r border-grid overflow-y-auto bg-warm-gray flex-shrink-0">
         <SchemaBrowser
           :schema="store.schema"
           :connection-ok="store.connectionOk"
@@ -58,8 +58,8 @@
           <QueryInput :loading="store.loading" @query="store.executeQueryWithInsight($event)" />
 
           <!-- Error -->
-          <div v-if="store.error" class="border border-red-200 bg-red-50 p-4">
-            <p class="text-[13px] text-red-600">{{ store.error }}</p>
+          <div v-if="store.error" class="border border-danger/20 bg-danger-soft rounded p-4">
+            <p class="text-[13px] text-danger">{{ store.error }}</p>
           </div>
 
           <!-- SQL Display -->
@@ -92,8 +92,8 @@
           <!-- Empty state -->
           <div v-if="!store.loading && !store.hasResults && !store.sql" class="py-20 text-center">
             <Icon icon="lucide:search" class="text-5xl text-grid mb-4 mx-auto" />
-            <p class="text-[14px] text-slate-500">使用自然语言查询 WMS 数据库</p>
-            <p class="text-[11px] text-slate-400 mt-1">仅支持 SELECT 查询，确保数据安全</p>
+            <p class="text-[14px] text-tertiary">使用自然语言查询 WMS 数据库</p>
+            <p class="text-[11px] text-tertiary/60 mt-1">仅支持 SELECT 查询，确保数据安全</p>
           </div>
         </div>
       </div>
