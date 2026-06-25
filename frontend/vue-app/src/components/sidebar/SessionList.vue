@@ -4,7 +4,7 @@
       v-for="session in store.sessions"
       :key="session.session_id"
       @click="store.loadSession(session.session_id)"
-      class="flex items-center justify-between px-3 py-2 cursor-pointer group text-white/40 hover:text-white/70 hover:bg-white/5 transition-colors text-[13px]"
+      class="flex items-center justify-between px-3 py-2 cursor-pointer group text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors text-[13px]"
       :class="{ 'bg-white/10 text-white/80': store.currentSessionId === session.session_id }"
     >
       <span class="truncate flex-1">{{ session.title || '新对话' }}</span>
