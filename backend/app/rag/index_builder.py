@@ -1,16 +1,21 @@
 """
 索引构建
-LlamaIndex VectorStoreIndex
+直接写入 ChromaDB，绕过 LlamaIndex VectorStoreIndex
+（避免 langchain/pydantic v1-v2 版本冲突）
 """
-from llama_index.core import VectorStoreIndex, StorageContext, Document
-from llama_index.core.node_parser import SentenceSplitter
 from typing import List, Optional, Dict
+
+from llama_index.core import Document
 
 from app.core.embedding import get_default_embedding
 from app.core.vector_store import get_vector_store_manager
+from app.core.logging import get_logger
 from app.rag.document_processor import DocumentProcessor
 from app.core.settings import get_industry_settings
 from app.config import get_settings
+
+_settings = get_settings()
+_log = get_logger("rag.indexer")
 
 
 class IndexBuilder:
@@ -27,32 +32,48 @@ class IndexBuilder:
         self.chunk_size = industry.chunk_size
         self.chunk_overlap = industry.chunk_overlap
 
-    def build_index(self, nodes: List) -> VectorStoreIndex:
+    def build_index(self, nodes: List) -> list:
         """
-        从节点构建索引
+        将节点写入 ChromaDB（绕过 VectorStoreIndex 避免 langchain/pydantic 冲突）
 
         Args:
             nodes: 分块后的节点列表
 
         Returns:
-            VectorStoreIndex
+            写入的 node id 列表
         """
-        vector_store = self.vector_store_manager.get_vector_store(self.knowledge_id)
+        collection = self.vector_store_manager.get_collection(self.knowledge_id)
 
-        storage_context = StorageContext.from_defaults(
-            vector_store=vector_store
-        )
+        ids = []
+        embeddings = []
+        documents = []
+        metadatas = []
 
-        index = VectorStoreIndex(
-            nodes,
-            storage_context=storage_context,
-            embed_model=self.embed_model
-        )
+        for node in nodes:
+            node_id = node.node_id
+            text = node.text
+            embedding = self.embed_model.get_text_embedding(text)
+            metadata = node.metadata or {}
+            # ChromaDB 只接受简单类型
+            clean_meta = {k: v for k, v in metadata.items() if isinstance(v, (str, int, float, bool))}
 
-        print(f"[IndexBuilder] 索引构建完成: {len(nodes)} 节点")
-        return index
+            ids.append(node_id)
+            embeddings.append(embedding)
+            documents.append(text)
+            metadatas.append(clean_meta)
 
-    def build_index_from_docs(self, documents: List[Document]) -> VectorStoreIndex:
+        if ids:
+            collection.add(
+                ids=ids,
+                embeddings=embeddings,
+                documents=documents,
+                metadatas=metadatas
+            )
+
+        _log.info("索引构建完成: {} 节点", len(ids))
+        return ids
+
+    def build_index_from_docs(self, documents: List[Document]) -> list:
         """
         从文档直接构建索引
 
@@ -60,56 +81,9 @@ class IndexBuilder:
             documents: LlamaIndex Document 列表
 
         Returns:
-            VectorStoreIndex
+            写入的 node id 列表
         """
-        # 分块
-        splitter = SentenceSplitter(
-            chunk_size=self.chunk_size,
-            chunk_overlap=self.chunk_overlap
-        )
-        nodes = splitter.get_nodes_from_documents(documents)
+        # 使用 DocumentProcessor 的 IMG 保护分割，避免图片标记被截断
+        nodes = self.processor.split_documents(documents)
 
         return self.build_index(nodes)
-
-    def add_documents(self, index: VectorStoreIndex, file_paths: List[str], metadata: Dict = None):
-        """
-        向现有索引添加文档
-
-        Args:
-            index: 现有索引
-            file_paths: 文件路径列表
-            metadata: 元数据
-        """
-        all_nodes = []
-        for fp in file_paths:
-            nodes = self.processor.process_file(fp, metadata)
-            all_nodes.extend(nodes)
-
-        index.insert_nodes(all_nodes)
-        print(f"[IndexBuilder] 添加 {len(all_nodes)} 节点到索引")
-
-    def get_index(self) -> Optional[VectorStoreIndex]:
-        """
-        获取现有索引
-
-        Returns:
-            VectorStoreIndex 或 None
-        """
-        vector_store = self.vector_store_manager.get_vector_store(self.knowledge_id)
-
-        # 检查集合是否有数据
-        collection = self.vector_store_manager.get_collection(self.knowledge_id)
-        if collection.count() == 0:
-            return None
-
-        storage_context = StorageContext.from_defaults(
-            vector_store=vector_store
-        )
-
-        index = VectorStoreIndex.from_vector_store(
-            vector_store,
-            storage_context=storage_context,
-            embed_model=self.embed_model
-        )
-
-        return index

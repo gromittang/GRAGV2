@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WMS Knowledge — 企业数据智能平台 (Design Preview)</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   DESIGN TOKENS — Phase 1 Design System
+   ============================================================ */
+:root {
+  /* Palette — Warm Stone */
+  --color-paper:        #FAF9F7;
+  --color-sidebar:      #2C241E;
+  --color-sidebar-hover:#3D342D;
+  --color-primary:      #2D2A26;
+  --color-secondary:    #6B6560;
+  --color-tertiary:     #9C9792;
+  --color-surface:      #FFFFFF;
+  --color-warm-gray:    #F3F0EC;
+  --color-grid:         #E8E4DD;
+  --color-accent:       #C75B2A;
+  --color-accent-hover: #A84A1F;
+  --color-accent-soft:  #FDF0E8;
+  --color-accent-green: #3D7A6E;
+  --color-accent-gold:  #B88A44;
+  --color-danger:       #C44D4D;
+  --color-danger-soft:  #FDF0F0;
+
+  /* Shadows — Warm Black Tint */
+  --shadow-none:        0 0 0 transparent;
+  --shadow-sm:          0 1px 2px rgba(26,29,35,0.03);
+  --shadow-card:        0 1px 3px rgba(26,29,35,0.04), 0 1px 2px rgba(26,29,35,0.02);
+  --shadow-raised:      0 4px 16px rgba(26,29,35,0.05), 0 1px 4px rgba(26,29,35,0.03);
+  --shadow-modal:       0 16px 48px rgba(26,29,35,0.10), 0 4px 12px rgba(26,29,35,0.05);
+  --shadow-glow:        0 0 0 3px rgba(199,91,42,0.12);
+
+  /* Radius */
+  --radius-none:  0px;
+  --radius-sm:    3px;
+  --radius:       5px;
+  --radius-md:    8px;
+  --radius-lg:    14px;
+  --radius-xl:    20px;
+  --radius-full:  9999px;
+
+  /* Spacing — 8px base unit */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* Typography */
+  --font-display:  'Space Grotesk', system-ui, sans-serif;
+  --font-body:     'Plus Jakarta Sans', 'Noto Sans SC', sans-serif;
+  --font-mono:     'JetBrains Mono', 'SF Mono', monospace;
+
+  /* Motion */
+  --ease-spring:   cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast:  150ms;
+  --duration-base:  250ms;
+  --duration-slow:  500ms;
+  --duration-glacial: 800ms;
+
+  /* Layout */
+  --sidebar-w: 248px;
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+body {
+  font-family: var(--font-body);
+  color: var(--color-primary);
+  background: var(--color-paper);
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D5D0C8; border-radius: var(--radius-full); }
+::-webkit-scrollbar-thumb:hover { background: #B5B0A8; }
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+.app { display: flex; height: 100vh; }
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--color-sidebar);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+/* Grain texture overlay */
+.sidebar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+  z-index: 1;
+}
+.sidebar-brand-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--color-accent) 0%, #E07B3A 100%);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(199,91,42,0.3);
+}
+.sidebar-brand-icon svg { width: 18px; height: 18px; color: #fff; }
+.sidebar-brand-text {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.sidebar-brand-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.35);
+  font-family: var(--font-body);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--space-4) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 1;
+  overflow-y: auto;
+}
+.nav-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.22);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: var(--space-4) var(--space-3) var(--space-2);
+  font-family: var(--font-mono);
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px var(--space-3);
+  border-radius: var(--radius);
+  color: rgba(255,255,255,0.50);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+  position: relative;
+  letter-spacing: 0.01em;
+}
+.nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.04); }
+.nav-item.active {
+  color: #fff;
+  background: rgba(255,255,255,0.07);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--color-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.7; }
+.nav-item.active svg { opacity: 1; }
+
+/* Sidebar Status */
+.sidebar-status {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  position: relative;
+  z-index: 1;
+}
+.status-dot {
+  width: 7px; height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-green);
+  box-shadow: 0 0 6px rgba(61,122,110,0.5);
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.3); }
+}
+.status-text { font-size: 12px; color: rgba(255,255,255,0.4); font-weight: 500; }
+.status-text strong { color: rgba(255,255,255,0.65); font-weight: 600; }
+
+/* ============================================================
+   MAIN CONTENT
+   ============================================================ */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-paper);
+}
+
+/* Page Header */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-10);
+  border-bottom: 1px solid var(--color-grid);
+  background: var(--color-paper);
+  flex-shrink: 0;
+}
+.page-header-left { display: flex; align-items: center; gap: var(--space-4); }
+.page-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+}
+.page-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.page-header-right { display: flex; align-items: center; gap: var(--space-4); }
+.header-metric {
+  text-align: right;
+}
+.header-metric-value {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.header-metric-label {
+  font-size: 11px;
+  color: var(--color-tertiary);
+  font-weight: 500;
+}
+
+/* Content Area */
+.content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Schema Sidebar (within content) */
+.schema-panel {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--color-grid);
+  background: var(--color-warm-gray);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.schema-panel-header {
+  padding: var(--space-4) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--color-grid);
+}
+.schema-table-item {
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  border-bottom: 1px solid rgba(232,228,221,0.5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.schema-table-item:hover { background: rgba(199,91,42,0.04); }
+.schema-table-item.active { background: #fff; box-shadow: inset 3px 0 0 var(--color-accent); }
+.schema-table-icon {
+  width: 22px; height: 22px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  border: 1px solid var(--color-grid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+.schema-table-name { font-size: 12.5px; font-weight: 600; color: var(--color-primary); }
+.schema-table-cols { font-size: 10px; color: var(--color-tertiary); font-family: var(--font-mono); }
+
+/* Main Query Area */
+.query-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-8) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ============================================================
+   COMPONENTS
+   ============================================================ */
+
+/* Double-Bezel Card */
+.card-outer {
+  background: var(--color-warm-gray);
+  border: 1px solid var(--color-grid);
+  border-radius: var(--radius-lg);
+  padding: 1.5px;
+  box-shadow: var(--shadow-card);
+}
+.card-inner {
+  background: var(--color-surface);
+  border-radius: calc(var(--radius-lg) - 1.5px);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+}
+
+/* Query Input Card — Hero Area */
+.query-hero {
+  background: var(--color-surface);
+  border: 1px solid var(--color-grid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
+  transition: box-shadow var(--duration-base) var(--ease-out);
+}
+.query-hero:focus-within {
+  box-shadow: var(--shadow-raised), var(--shadow-glow);
+  border-color: rgba(199,91,42,0.25);
+}
+.query-hero-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-grid);
+  background: var(--color-warm-gray);
+}
+.query-hero-header-dot {
+  width: 8px; height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+.query-hero-header-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+.query-hero-body { padding: var(--space-5); }
+.query-textarea {
+  width: 100%;
+  min-height: 56px;
+  border: none;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--color-primary);
+  resize: vertical;
+  background: transparent;
+  line-height: 1.6;
+}
+.query-textarea::placeholder { color: var(--color-tertiary); }
+.query-hero-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-grid);
+  background: var(--color-warm-gray);
+}
+.query-suggestions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.query-suggestion {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--color-grid);
+  background: var(--color-surface);
+  color: var(--color-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.query-suggestion:hover { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-soft); }
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 9px 20px;
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  letter-spacing: 0.01em;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover { background: var(--color-accent-hover); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(199,91,42,0.25); }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary svg { width: 16px; height: 16px; }
+/* Button-in-Button trailing icon */
+.btn-primary .icon-nest {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  border-radius: var(--radius-full);
+  background: rgba(255,255,255,0.15);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+.btn-primary:hover .icon-nest { transform: translateX(2px) translateY(-1px); background: rgba(255,255,255,0.22); }
+
+/* Secondary Button */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 8px 16px;
+  background: var(--color-surface);
+  color: var(--color-secondary);
+  border: 1px solid var(--color-grid);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.btn-secondary:hover { border-color: #ccc; color: var(--color-primary); background: var(--color-warm-gray); }
+.btn-secondary svg { width: 15px; height: 15px; }
+
+/* SQL Display Card */
+.sql-card {
+  background: #1E2127;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.sql-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.sql-card-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.sql-card-actions { display: flex; gap: var(--space-1); }
+.sql-card-actions button {
+  padding: 3px 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: rgba(255,255,255,0.5);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  font-family: var(--font-mono);
+}
+.sql-card-actions button:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.8); }
+.sql-card-body {
+  padding: var(--space-4) var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #C8CCD4;
+  overflow-x: auto;
+  white-space: pre;
+}
+.sql-keyword { color: #E8935A; }
+.sql-string { color: #8CB89F; }
+.sql-number { color: #C8A87C; }
+.sql-func { color: #D4A85C; }
+
+/* Results Table */
+.result-card {
+  border: 1px solid var(--color-grid);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+}
+.result-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-grid);
+  background: var(--color-warm-gray);
+}
+.result-card-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.result-count {
+  font-size: 11px;
+  color: var(--color-tertiary);
+  font-weight: 500;
+}
+.result-table-wrap { overflow-x: auto; }
+.result-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.result-table thead { border-bottom: 2px solid var(--color-grid); }
+.result-table th {
+  padding: 10px var(--space-4);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--color-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--color-warm-gray);
+  white-space: nowrap;
+}
+.result-table td {
+  padding: 10px var(--space-4);
+  border-bottom: 1px solid rgba(232,228,221,0.5);
+  color: var(--color-primary);
+  white-space: nowrap;
+}
+.result-table tbody tr { transition: background var(--duration-fast) var(--ease-out); }
+.result-table tbody tr:hover { background: rgba(199,91,42,0.02); }
+.result-table .num { font-family: var(--font-mono); text-align: right; font-weight: 500; }
+.result-table .warehouse { font-weight: 600; display: flex; align-items: center; gap: var(--space-2); }
+.warehouse-dot { width: 7px; height: 7px; border-radius: var(--radius-full); flex-shrink: 0; }
+.wh-a { background: #C75B2A; }
+.wh-b { background: #D4A85C; }
+.wh-c { background: #3D7A6E; }
+.wh-d { background: #8CB89F; }
+.wh-e { background: #9B8EC4; }
+.trend-up { color: var(--color-accent-green); font-weight: 600; }
+.trend-down { color: var(--color-danger); font-weight: 600; }
+
+/* Insight Card */
+.insight-card {
+  border: 1px solid var(--color-grid);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.insight-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-grid);
+  background: linear-gradient(135deg, rgba(199,91,42,0.03), rgba(184,138,68,0.04));
+}
+.insight-card-header svg { width: 16px; height: 16px; color: var(--color-accent); }
+.insight-card-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.insight-card-body { padding: var(--space-4); }
+.insight-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid rgba(232,228,221,0.5);
+}
+.insight-item:last-child { border-bottom: none; }
+.insight-marker {
+  width: 20px; height: 20px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.insight-marker.info { background: rgba(199,91,42,0.1); color: var(--color-accent); }
+.insight-marker.warn { background: rgba(184,138,68,0.12); color: var(--color-accent-gold); }
+.insight-marker.good { background: rgba(61,122,110,0.1); color: var(--color-accent-green); }
+.insight-text { font-size: 13px; color: var(--color-primary); line-height: 1.55; }
+.insight-highlight { font-weight: 700; color: var(--color-accent); }
+
+/* History Mini Cards */
+.history-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  border: 1px solid transparent;
+  background: var(--color-surface);
+}
+.history-item:hover { background: var(--color-warm-gray); border-color: var(--color-grid); }
+.history-item-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.history-item-badge.sql { background: rgba(61,122,110,0.1); color: var(--color-accent-green); }
+.history-item-badge.mcp { background: rgba(184,138,68,0.12); color: var(--color-accent-gold); }
+.history-item-text {
+  font-size: 12.5px;
+  color: var(--color-primary);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-item-time {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-tertiary);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   BENTO GRID — Asymmetrical Layout
+   ============================================================ */
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: auto auto;
+  gap: var(--space-4);
+}
+.bento-grid .bento-main  { grid-column: 1; grid-row: 1 / 3; }
+.bento-grid .bento-side1 { grid-column: 2; grid-row: 1; }
+.bento-grid .bento-side2 { grid-column: 2; grid-row: 2; }
+
+/* Section Label */
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ============================================================
+   SIDEBAR COLOR SWITCHER
+   ============================================================ */
+.color-switcher {
+  display: flex;
+  gap: 8px;
+  padding: 8px 20px;
+  position: relative;
+  z-index: 2;
+}
+.color-swatch {
+  width: 20px; height: 20px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+}
+.color-swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,0.4); }
+.color-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,0.15); }
+
+/* ============================================================
+   ANIMATIONS — Staggered Entry
+   ============================================================ */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fade-up var(--duration-glacial) var(--ease-spring) forwards;
+  opacity: 0;
+}
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+.delay-5 { animation-delay: 400ms; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: var(--space-8);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: #1E2127;
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--duration-base) var(--ease-spring);
+  z-index: 999;
+  box-shadow: var(--shadow-modal);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ============================================================
+   RESPONSIVE — Mobile collapse
+   ============================================================ */
+@media (max-width: 1024px) {
+  .schema-panel { display: none; }
+  .page-header { padding: var(--space-4) var(--space-5); }
+  .page-title { font-size: 18px; }
+  .query-area { padding: var(--space-5) var(--space-5); }
+  .bento-grid { grid-template-columns: 1fr; }
+  .bento-grid .bento-main  { grid-column: 1; grid-row: auto; }
+  .bento-grid .bento-side1 { grid-column: 1; grid-row: auto; }
+  .bento-grid .bento-side2 { grid-column: 1; grid-row: auto; }
+}
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .page-header-right { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============================================================
+       SIDEBAR
+       ============================================================ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1"/>
+          <rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/>
+          <rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sidebar-brand-text">WMS Knowledge</div>
+        <div class="sidebar-brand-sub">Enterprise Intelligence</div>
+      </div>
+    </div>
+
+    <!-- Sidebar Color Switcher -->
+    <div class="color-switcher" id="colorSwitcher">
+      <div class="color-swatch" data-color="#1A1D23" style="background:#1A1D23" title="Warm Black"></div>
+      <div class="color-swatch active" data-color="#2C241E" style="background:#2C241E" title="Deep Espresso (current)"></div>
+      <div class="color-swatch" data-color="#1E2A32" style="background:#1E2A32" title="Slate Navy"></div>
+      <div class="color-swatch" data-color="#212820" style="background:#212820" title="Forest Charcoal"></div>
+      <div class="color-swatch" data-color="#232323" style="background:#232323" title="Neutral Charcoal"></div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="nav-item" data-nav="orchestrator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.5 5.5L20 10l-4 3.5L17 20l-5-3-5 3 1-6.5L4 10l5.5-1.5L12 3z"/></svg>
+        智能助手
+      </a>
+      <div class="nav-section-label">功能模块</div>
+      <a class="nav-item active" data-nav="query">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        数据查询
+      </a>
+      <a class="nav-item" data-nav="chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        智能问答
+      </a>
+      <a class="nav-item" data-nav="knowledge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        知识库
+      </a>
+      <a class="nav-item" data-nav="pm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        PM方案工作室
+      </a>
+      <div class="nav-section-label">系统</div>
+      <a class="nav-item" data-nav="logs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 17"/><line x1="12" y1="17" x2="18" y2="17"/></svg>
+        系统日志
+      </a>
+      <a class="nav-item" data-nav="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        系统设置
+      </a>
+    </nav>
+
+    <div class="sidebar-status">
+      <div class="status-dot"></div>
+      <div class="status-text">系统在线 · <strong>MySQL v8.0</strong></div>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       MAIN CONTENT
+       ============================================================ -->
+  <main class="main">
+    <!-- Page Header -->
+    <header class="page-header">
+      <div class="page-header-left">
+        <h1 class="page-title">数据查询</h1>
+        <span class="page-badge">NL2SQL</span>
+      </div>
+      <div class="page-header-right">
+        <div class="header-metric">
+          <div class="header-metric-value">128ms</div>
+          <div class="header-metric-label">平均响应</div>
+        </div>
+        <div class="header-metric">
+          <div class="header-metric-value">2,847</div>
+          <div class="header-metric-label">今日查询</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content: Schema Panel + Query Area -->
+    <div class="content">
+      <!-- Schema Browser -->
+      <aside class="schema-panel">
+        <div class="schema-panel-header">数据表</div>
+        <div class="schema-table-item active">
+          <div class="schema-table-icon">📦</div>
+          <div>
+            <div class="schema-table-name">wms_inbound_records</div>
+            <div class="schema-table-cols">12 cols</div>
+          </div>
+        </div>
+        <div class="schema-table-item">
+          <div class="schema-table-icon">🚚</div>
+          <div>
+            <div class="schema-table-name">wms_outbound_records</div>
+            <div class="schema-table-cols">14 cols</div>
+          </div>
+        </div>
+        <div class="schema-table-item">
+          <div class="schema-table-icon">🏭</div>
+          <div>
+            <div class="schema-table-name">wms_warehouse_info</div>
+            <div class="schema-table-cols">8 cols</div>
+          </div>
+        </div>
+        <div class="schema-table-item">
+          <div class="schema-table-icon">📋</div>
+          <div>
+            <div class="schema-table-name">wms_inventory_snapshot</div>
+            <div class="schema-table-cols">10 cols</div>
+          </div>
+        </div>
+        <div class="schema-table-item">
+          <div class="schema-table-icon">🏷️</div>
+          <div>
+            <div class="schema-table-name">wms_sku_master</div>
+            <div class="schema-table-cols">16 cols</div>
+          </div>
+        </div>
+        <div class="schema-table-item">
+          <div class="schema-table-icon">👤</div>
+          <div>
+            <div class="schema-table-name">wms_supplier_info</div>
+            <div class="schema-table-cols">9 cols</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Query Area -->
+      <div class="query-area">
+
+        <!-- Hero Query Input -->
+        <div class="query-hero animate-in delay-1">
+          <div class="query-hero-header">
+            <div class="query-hero-header-dot"></div>
+            <span class="query-hero-header-label">自然语言查询</span>
+          </div>
+          <div class="query-hero-body">
+            <textarea class="query-textarea" id="queryInput" placeholder="用中文描述你想查询的数据，例如：查询最近一周各仓库的入库总量和 SKU 种类数">查询最近一周各仓库的入库总量，按入库量降序排列，并统计各仓库处理的SKU种类数</textarea>
+          </div>
+          <div class="query-hero-footer">
+            <div class="query-suggestions">
+              <button class="query-suggestion" onclick="setQuery('查询本月出库量前10的SKU及对应供应商')">本月热销SKU</button>
+              <button class="query-suggestion" onclick="setQuery('对比各仓库当前库存周转天数')">库存周转对比</button>
+              <button class="query-suggestion" onclick="setQuery('统计昨日各仓入库异常批次数量')">入库异常统计</button>
+            </div>
+            <button class="btn-primary" onclick="simulateQuery()">
+              执行查询
+              <span class="icon-nest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 12 5 19 12"/><polyline points="12 19 12 5"/></svg>
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bento Grid: Results Area -->
+        <div class="bento-grid">
+
+          <!-- Main Column: SQL + Table -->
+          <div class="bento-main" style="display:flex;flex-direction:column;gap:var(--space-4);">
+
+            <!-- Generated SQL -->
+            <div class="sql-card animate-in delay-2">
+              <div class="sql-card-header">
+                <span class="sql-card-label">Generated SQL</span>
+                <div class="sql-card-actions">
+                  <button onclick="copyToast()">复制</button>
+                  <button>格式化</button>
+                </div>
+              </div>
+              <div class="sql-card-body"><span class="sql-keyword">SELECT</span>
+  w.warehouse_name <span class="sql-keyword">AS</span> 仓库名称,
+  <span class="sql-func">SUM</span>(r.inbound_qty) <span class="sql-keyword">AS</span> 入库总量,
+  <span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> r.sku_code) <span class="sql-keyword">AS</span> SKU种类数,
+  <span class="sql-func">ROUND</span>(<span class="sql-func">AVG</span>(r.inbound_qty), <span class="sql-number">0</span>) <span class="sql-keyword">AS</span> 平均单次入库量
+<span class="sql-keyword">FROM</span> wms_inbound_records r
+<span class="sql-keyword">JOIN</span> wms_warehouse_info w <span class="sql-keyword">ON</span> r.warehouse_id = w.id
+<span class="sql-keyword">WHERE</span> r.created_at >= <span class="sql-func">DATE_SUB</span>(<span class="sql-func">NOW</span>(), <span class="sql-keyword">INTERVAL</span> <span class="sql-number">7</span> <span class="sql-keyword">DAY</span>)
+  <span class="sql-keyword">AND</span> r.status = <span class="sql-string">'completed'</span>
+<span class="sql-keyword">GROUP BY</span> w.warehouse_name
+<span class="sql-keyword">ORDER BY</span> 入库总量 <span class="sql-keyword">DESC</span></div>
+            </div>
+
+            <!-- Results Table -->
+            <div class="result-card animate-in delay-3">
+              <div class="result-card-header">
+                <span class="result-card-title">查询结果</span>
+                <span class="result-count">共 <strong style="color:var(--color-primary)">5</strong> 条，耗时 <strong style="color:var(--color-accent-green);font-family:var(--font-mono)">42ms</strong></span>
+              </div>
+              <div class="result-table-wrap">
+                <table class="result-table">
+                  <thead>
+                    <tr>
+                      <th>仓库名称</th>
+                      <th style="text-align:right">入库总量</th>
+                      <th style="text-align:right">SKU 种类数</th>
+                      <th style="text-align:right">平均单次入库量</th>
+                      <th>趋势</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="warehouse"><span class="warehouse-dot wh-a"></span>华南中心仓（广州）</span></td>
+                      <td class="num">128,450</td>
+                      <td class="num">3,842</td>
+                      <td class="num">2,140</td>
+                      <td><span class="trend-up">↑ 12.5%</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="warehouse"><span class="warehouse-dot wh-b"></span>华东区域仓（上海）</span></td>
+                      <td class="num">96,230</td>
+                      <td class="num">2,956</td>
+                      <td class="num">1,870</td>
+                      <td><span class="trend-up">↑ 8.3%</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="warehouse"><span class="warehouse-dot wh-c"></span>华北区域仓（北京）</span></td>
+                      <td class="num">72,810</td>
+                      <td class="num">2,410</td>
+                      <td class="num">1,620</td>
+                      <td><span class="trend-down">↓ 3.1%</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="warehouse"><span class="warehouse-dot wh-d"></span>西南区域仓（成都）</span></td>
+                      <td class="num">54,320</td>
+                      <td class="num">1,873</td>
+                      <td class="num">1,290</td>
+                      <td><span class="trend-up">↑ 5.7%</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="warehouse"><span class="warehouse-dot wh-e"></span>华中区域仓（武汉）</span></td>
+                      <td class="num">41,680</td>
+                      <td class="num">1,542</td>
+                      <td class="num">980</td>
+                      <td><span class="trend-up">↑ 2.2%</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Side Column: Insight + History -->
+          <div class="bento-side1">
+            <div class="insight-card animate-in delay-4">
+              <div class="insight-card-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                <span class="insight-card-title">AI 数据洞察</span>
+              </div>
+              <div class="insight-card-body">
+                <div class="insight-item">
+                  <div class="insight-marker info">1</div>
+                  <div class="insight-text"><span class="insight-highlight">华南中心仓</span>入库量占全国总量的 <span class="insight-highlight">32.7%</span>，是第二名华东仓的 1.3 倍，集中度较高。</div>
+                </div>
+                <div class="insight-item">
+                  <div class="insight-marker warn">2</div>
+                  <div class="insight-text">华北仓本周入库量<span class="insight-highlight">环比下降 3.1%</span>，建议关注是否受天气或物流影响。</div>
+                </div>
+                <div class="insight-item">
+                  <div class="insight-marker good">3</div>
+                  <div class="insight-text">五大仓库整体入库效率良好，平均单次入库量 <span class="insight-highlight">1,580 件</span>，符合运营标准。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bento-side2">
+            <div class="animate-in delay-5">
+              <div class="section-eyebrow" style="margin-bottom:var(--space-3)">最近查询</div>
+              <div class="history-list">
+                <div class="history-item" onclick="setQuery('统计本月各供应商的准时交货率')">
+                  <span class="history-item-badge sql">SQL</span>
+                  <span class="history-item-text">统计本月各供应商的准时交货率</span>
+                  <span class="history-item-time">14:32</span>
+                </div>
+                <div class="history-item" onclick="setQuery('查询当前库存低于安全库存的SKU清单')">
+                  <span class="history-item-badge mcp">MCP</span>
+                  <span class="history-item-text">查询当前库存低于安全库存的SKU清单</span>
+                  <span class="history-item-time">11:15</span>
+                </div>
+                <div class="history-item" onclick="setQuery('对比近三个月各品类出库量变化趋势')">
+                  <span class="history-item-badge sql">SQL</span>
+                  <span class="history-item-text">对比近三个月各品类出库量变化趋势</span>
+                  <span class="history-item-time">09:48</span>
+                </div>
+                <div class="history-item" onclick="setQuery('导出本周异常入库明细')">
+                  <span class="history-item-badge mcp">MCP</span>
+                  <span class="history-item-text">导出本周异常入库明细</span>
+                  <span class="history-item-time">昨日</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">已复制到剪贴板</div>
+
+<script>
+// Sidebar Color Switcher
+const SIDEBAR_COLORS = {
+  '#1A1D23': { hover: '#252830', name: 'Warm Black (默认)' },
+  '#2C241E': { hover: '#3D342D', name: 'Deep Espresso 深咖啡' },
+  '#1E2A32': { hover: '#293845', name: 'Slate Navy 板岩蓝' },
+  '#212820': { hover: '#2E362B', name: 'Forest Charcoal 森林炭' },
+  '#232323': { hover: '#303030', name: 'Neutral Charcoal 中性炭' },
+};
+
+document.querySelectorAll('.color-swatch').forEach(swatch => {
+  swatch.addEventListener('click', function() {
+    const color = this.dataset.color;
+    const info = SIDEBAR_COLORS[color];
+    document.querySelector('.sidebar').style.setProperty('--color-sidebar', color);
+    document.querySelector('.sidebar').style.background = color;
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+    this.classList.add('active');
+    // Update status text
+    const statusLabel = document.querySelector('.status-text strong');
+    if (statusLabel) {
+      statusLabel.textContent = info.name;
+    }
+    // Update hover color on nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.style.setProperty('--hover-bg', info.hover);
+    });
+  });
+});
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function(e) {
+    e.preventDefault();
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Rest of JS...
+
+// Set query text
+function setQuery(text) {
+  document.getElementById('queryInput').value = text;
+  document.getElementById('queryInput').focus();
+}
+
+// Simulate query execution
+function simulateQuery() {
+  const btn = document.querySelector('.btn-primary');
+  const origText = btn.childNodes[0].textContent;
+  btn.childNodes[0].textContent = '查询中...';
+  btn.style.pointerEvents = 'none';
+  btn.style.opacity = '0.7';
+  setTimeout(() => {
+    btn.childNodes[0].textContent = origText;
+    btn.style.pointerEvents = '';
+    btn.style.opacity = '';
+    showToast('查询完成 · 返回 5 条结果 · 耗时 42ms');
+  }, 900);
+}
+
+// Copy toast
+function copyToast() {
+  showToast('SQL 已复制到剪贴板');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// Keyboard shortcut
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    simulateQuery();
+  }
+});
+</script>
+
+</body>
+</html>

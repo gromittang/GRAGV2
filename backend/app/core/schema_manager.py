@@ -8,6 +8,10 @@ import numpy as np
 
 from app.core.db_mysql import get_mysql_manager
 from app.core.embedding import get_default_embedding
+from app.core.semantic_layer_loader import get_essential_columns, get_join_keys
+from app.core.logging import get_logger
+
+_log = get_logger("core.schema")
 
 
 class SchemaManager:
@@ -36,7 +40,9 @@ class SchemaManager:
 
             # 字段级文本
             for col in table_info.get("columns", []):
-                col_text = f"字段: {table_name}.{col['column_name']} ({col.get('display_name', '')}) 类型:{col.get('data_type', '')} - {col.get('description', '')}"
+                remark = col.get('remark', '')
+                remark_str = f" [枚举: {remark}]" if remark else ""
+                col_text = f"字段: {table_name}.{col['column_name']} ({col.get('display_name', '')}) 类型:{col.get('data_type', '')} - {col.get('description', '')}{remark_str}"
                 texts.append(col_text)
 
         return texts
@@ -48,7 +54,7 @@ class SchemaManager:
                 await self.load_schema_from_db()
 
             if not self._schema_cache:
-                print("[SchemaManager] Schema为空，无法构建索引")
+                _log.warning("Schema为空，无法构建索引")
                 return
 
             self._schema_texts = self._build_schema_texts()
@@ -58,9 +64,9 @@ class SchemaManager:
             self._schema_embeddings = embedding_model.get_text_embedding_batch(self._schema_texts)
 
             self._initialized = True
-            print(f"[SchemaManager] 索引构建完成: {len(self._schema_texts)} 条")
+            _log.info("索引构建完成: {} 条", len(self._schema_texts))
         except Exception as e:
-            print(f"[SchemaManager] 索引构建失败: {e}")
+            _log.error("索引构建失败: {}", e)
             self._initialized = False
 
     async def search_relevant_schema(self, query: str, top_k: int = 5) -> Dict[str, Any]:
@@ -115,20 +121,113 @@ class SchemaManager:
             "schema_text": self._format_schema_context(schema_context)
         }
 
+    async def search_relevant_schema_filtered(
+        self, query: str, table_filter: list, top_k: int = 5
+    ) -> Dict[str, Any]:
+        """语义搜索相关Schema，但只在 table_filter 中的表范围内搜索"""
+        if not self._initialized:
+            await self.build_embedding_index()
+
+        embedding_model = get_default_embedding()
+        query_embedding = np.array(embedding_model.get_text_embedding(query))
+
+        # 只对 table_filter 中的表和字段计算相似度
+        filter_set = set(table_filter)
+        similarities = []
+        for i, text in enumerate(self._schema_texts):
+            emb = np.array(self._schema_embeddings[i])
+            sim = np.dot(query_embedding, emb) / (
+                np.linalg.norm(query_embedding) * np.linalg.norm(emb) + 1e-8
+            )
+            if text.startswith("表:"):
+                table_name = text.split("(")[0].replace("表: ", "").strip()
+                if table_name in filter_set:
+                    similarities.append((i, sim))
+            elif text.startswith("字段:"):
+                parts = text.replace("字段: ", "").split(".")
+                if len(parts) >= 2 and parts[0] in filter_set:
+                    similarities.append((i, sim))
+
+        similarities.sort(key=lambda x: x[1], reverse=True)
+        top_indices = [x[0] for x in similarities[:top_k * 2]]
+
+        relevant_tables = set()
+        relevant_columns = []
+        for idx in top_indices:
+            text = self._schema_texts[idx]
+            if text.startswith("表:"):
+                table_name = text.split("(")[0].replace("表: ", "").strip()
+                if table_name in filter_set:
+                    relevant_tables.add(table_name)
+            elif text.startswith("字段:"):
+                parts = text.replace("字段: ", "").split(".")
+                if len(parts) >= 2 and parts[0] in filter_set:
+                    relevant_tables.add(parts[0])
+                    relevant_columns.append(f"{parts[0]}.{parts[1].split('(')[0].strip()}")
+
+        # 确保 filter_set 中的表至少都在 context 中（即使相似度不高）
+        for t in filter_set:
+            if t in self._schema_cache:
+                relevant_tables.add(t)
+
+        schema_context = {}
+        for table in relevant_tables:
+            if table in self._schema_cache:
+                schema_context[table] = self._schema_cache[table]
+
+        return {
+            "tables": list(relevant_tables),
+            "columns": relevant_columns[:top_k],
+            "schema_context": schema_context,
+            "schema_text": self._format_schema_context(schema_context),
+        }
+
     def _format_schema_context(self, schema: Dict[str, Any]) -> str:
-        """格式化schema为Prompt用的文本"""
+        """格式化schema为Prompt用的文本，仅输出 Key columns（字段白名单模式）"""
         lines = []
         for table_name, info in schema.items():
+            whitelist = get_essential_columns(table_name)
+            join_keys = get_join_keys(table_name)
+            allowed = set(whitelist) | set(join_keys) if whitelist else set()
+
             lines.append(f"\n表 {table_name} ({info.get('display_name', '')}):")
             for col in info.get("columns", []):
-                lines.append(f"  - {col['column_name']} ({col.get('display_name', '')}): {col.get('data_type', '')} - {col.get('description', '')}")
+                col_name = col["column_name"]
+                # 有白名单时只输出白名单+JOIN键；无白名单时回退全部字段
+                if allowed and col_name not in allowed:
+                    continue
+                remark = col.get("remark", "")
+                remark_str = f" [枚举: {remark}]" if remark else ""
+                lines.append(
+                    f"  - {col_name} ({col.get('display_name', '')}): "
+                    f"{col.get('data_type', '')} - {col.get('description', '')}{remark_str}"
+                )
         return "\n".join(lines)
+
+    def get_tables_schema_text(self, table_names: list) -> str:
+        """获取指定表列表的格式化 schema 文本（供外部强制注入优先表）"""
+        schema = {}
+        for name in table_names:
+            if name in self._schema_cache:
+                schema[name] = self._schema_cache[name]
+        return self._format_schema_context(schema)
 
     async def refresh_index(self) -> None:
         """刷新索引"""
         self._initialized = False
         self._schema_cache = {}
         await self.build_embedding_index()
+
+    def get_column_display_map(self) -> Dict[str, str]:
+        """构建 {column_name: display_name} 全局映射（中文名优先）"""
+        col_map: Dict[str, str] = {}
+        for table_info in self._schema_cache.values():
+            for col in table_info.get("columns", []):
+                name = col["column_name"]
+                display = col.get("display_name", "")
+                if display and display != name and name not in col_map:
+                    col_map[name] = display
+        return col_map
 
     def get_all_tables(self) -> List[Dict[str, Any]]:
         """获取所有表列表"""

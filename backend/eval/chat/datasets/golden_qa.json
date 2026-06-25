@@ -1,0 +1,51 @@
+[
+  {
+    "id": "chat_001",
+    "question": "仓库的拣货流程是怎样的？",
+    "expected_sources": ["出库建议操作流程.docx"],
+    "expected_keywords": ["拣货", "出库", "复核"],
+    "category": "warehouse_ops",
+    "knowledge_id": null,
+    "allow_equivalent": true,
+    "_PENDING_REVIEW": true
+  },
+  {
+    "id": "chat_002",
+    "question": "如何进行库存盘点？",
+    "expected_sources": ["wms盘点.docx"],
+    "expected_keywords": ["盘点", "库存", "差异"],
+    "category": "inventory",
+    "knowledge_id": null,
+    "allow_equivalent": true
+  },
+  {
+    "id": "chat_003",
+    "question": "出库的审批流程是什么？",
+    "expected_sources": [],
+    "expected_keywords": ["出库", "审批", "审核"],
+    "category": "outbound",
+    "knowledge_id": null,
+    "allow_equivalent": true,
+    "_PENDING_REVIEW": true
+  },
+  {
+    "id": "chat_004",
+    "question": "系统的用户权限怎么设置？",
+    "expected_sources": [],
+    "expected_keywords": ["权限", "角色", "用户"],
+    "category": "system_config",
+    "knowledge_id": null,
+    "allow_equivalent": true,
+    "_PENDING_REVIEW": true
+  },
+  {
+    "id": "chat_005",
+    "question": "收货验收有哪些注意事项？",
+    "expected_sources": ["入库建议操作流程.docx"],
+    "expected_keywords": ["收货", "验收", "上架"],
+    "category": "acceptance",
+    "knowledge_id": null,
+    "allow_equivalent": true,
+    "_PENDING_REVIEW": true
+  }
+]

@@ -1,7 +1,7 @@
 <template>
-  <div class="flex-1 flex flex-col bg-paper overflow-hidden">
+  <div class="flex-1 flex flex-col bg-paper overflow-hidden min-h-0">
     <!-- Header -->
-    <header class="h-20 hairline-b flex items-center justify-between px-12 sticky top-0 bg-paper z-40">
+    <header class="h-20 hairline-b flex items-center justify-between px-12 flex-shrink-0 bg-paper z-40">
       <div class="flex items-center gap-4">
         <h1 class="font-space text-2xl font-bold text-primary tracking-tight">智能问答</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
@@ -22,7 +22,6 @@
       :loading="store.loading"
       :streaming="store.streaming"
       :streaming-content="store.streamingContent"
-      :tools="store.tools"
       @send="store.sendMessage"
     />
   </div>
@@ -38,6 +37,5 @@ const store = useChatStore()
 
 onMounted(() => {
   store.fetchSessions()
-  store.fetchTools()
 })
 </script>

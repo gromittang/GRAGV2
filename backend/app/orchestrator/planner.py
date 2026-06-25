@@ -15,11 +15,15 @@ from app.core.logging import get_logger
 _log = get_logger("orchestrator.planner")
 
 
+# 合法 intent 值，_validate() 和 Planner 共用此来源
+# 注意: Python 3.11 的 Literal 不支持直接解包 tuple，PlanStep.intent 保持显式声明
+VALID_INTENTS = ("nl2sql", "rag", "synthesize")
+
 # === Schema (Phase 1) ===
 
 class PlanStep(BaseModel):
     step: int       # 1-based step number
-    intent: Literal["nl2sql", "rag", "synthesize"]
+    intent: Literal["nl2sql", "rag", "synthesize"]  # 与 VALID_INTENTS 保持同步
     goal: str       # human-readable description
     query: str      # actual query / synthesis instruction
 
@@ -125,7 +129,7 @@ class Planner:
             raise ValueError(f"Step numbers must be 1..N consecutive, got: {sorted(ids)}")
 
         for s in steps:
-            if s.intent not in ("nl2sql", "rag", "synthesize"):
+            if s.intent not in VALID_INTENTS:
                 raise ValueError(f"Unknown intent: {s.intent}")
 
         non_synth = [s for s in steps if s.intent != "synthesize"]

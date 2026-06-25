@@ -1870,7 +1870,7 @@ python -m uvicorn app.main:app --reload --port 8811
 - [ ] **验证2：测试MySQL连接**
 
 ```bash
-curl http://localhost:8811/api/v1/query/test-connection
+curl http://localhost:8812/api/v1/query/test-connection
 ```
 
 预期：返回 `{"ok": true, ...}`
@@ -1878,7 +1878,7 @@ curl http://localhost:8811/api/v1/query/test-connection
 - [ ] **验证3：获取Schema**
 
 ```bash
-curl http://localhost:8811/api/v1/query/schema
+curl http://localhost:8812/api/v1/query/schema
 ```
 
 预期：返回表列表，包含tfrmdataobj等表
@@ -1886,7 +1886,7 @@ curl http://localhost:8811/api/v1/query/schema
 - [ ] **验证4：执行自然语言查询**
 
 ```bash
-curl -X POST http://localhost:8811/api/v1/query/ \
+curl -X POST http://localhost:8812/api/v1/query/ \
   -H "Content-Type: application/json" \
   -d '{"question": "查询库存最多的商品"}'
 ```

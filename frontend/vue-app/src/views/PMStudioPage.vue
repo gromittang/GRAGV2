@@ -47,7 +47,7 @@
               <div class="absolute inset-4 bg-accent-orange rounded-full animate-pulse"></div>
             </div>
             <span class="text-primary font-medium">AI正在思考...</span>
-            <span class="text-xs text-primary/50 font-mono">正在检索知识库并生成回答</span>
+            <span class="text-xs text-primary/50 font-mono">{{ statusMessage }}</span>
           </div>
         </div>
 
@@ -149,7 +149,7 @@
               </div>
 
               <!-- 当前生成中的内容 -->
-              <div v-if="currentOutput && currentPhaseChatHistory.length === 0" class="bg-white border border-grid rounded-lg p-6 mb-4">
+              <div v-if="currentOutput" class="bg-white border border-grid rounded-lg p-6 mb-4">
                 <div class="pm-output prose prose-sm max-w-none leading-relaxed" v-html="renderedOutput"></div>
               </div>
 
@@ -171,7 +171,7 @@
                     正在生成回答...
                   </div>
 
-                  <div class="text-xs text-primary/50 font-mono">AI正在分析知识库并生成内容</div>
+                  <div class="text-xs text-primary/50 font-mono">{{ statusMessage }}</div>
                 </div>
               </div>
 
@@ -192,6 +192,15 @@
                   </button>
                 </div>
               </div>
+
+              <!-- Stage Feedback (shown after generation, before next interaction) -->
+              <StageFeedback
+                v-if="sessionId && phaseStatuses[currentPhase] === 'generated'"
+                :session-id="sessionId"
+                :stage="currentPhase"
+                :modify-count="stageModifyCount[currentPhase] || 1"
+                :stage-output-summary="currentPhaseChatHistory.filter(c => c.role === 'assistant').pop()?.content?.slice(0, 200) || ''"
+              />
 
               <!-- User Input - 对话框模式，两个按钮 -->
               <div class="bg-warm-gray border border-grid rounded-lg p-4">
@@ -296,6 +305,7 @@ import pmSolutionApi from '../api/pmSolution'
 import PreviewModal from '../components/knowledge/PreviewModal.vue'
 import documentsV2Api from '../api/documentsV2'
 import TimelineStepper from '../components/pm/TimelineStepper.vue'
+import StageFeedback from '../components/pm/StageFeedback.vue'
 
 // Phase definitions - matches backend STAGE_TEMPLATES
 const phases = [
@@ -318,6 +328,7 @@ const currentPhase = ref('problem_definition')
 const phaseOutputs = ref({})
 const retrievedChunks = ref([])  // 存储检索到的知识库片段
 const loading = ref(false)
+const statusMessage = ref('正在检索知识库并生成回答')
 const showHistory = ref(false)
 const history = ref([])
 const historyLoading = ref(false)
@@ -327,6 +338,9 @@ const titleInputRef = ref(null)
 
 // 对话历史 - 每个阶段的对话记录
 const chatHistory = ref({})
+
+// 每个阶段的"对话"次数（用于反馈）
+const stageModifyCount = ref({})
 
 // 知识库选择
 const knowledgeBases = ref([])
@@ -481,6 +495,7 @@ async function createSession() {
   retrievedChunks.value = []
   chatHistory.value = {}
   phaseStatuses.value = {}
+  stageModifyCount.value = {}
 
   try {
     // 1. 创建会话
@@ -498,6 +513,7 @@ async function createSession() {
       role: 'user',
       content: problemInput.value.trim()
     }]
+    stageModifyCount.value[currentPhase.value] = 1
 
     // 2. 使用SSE流式对话（传入当前阶段索引）
     let assistantContent = ''
@@ -568,8 +584,10 @@ function _getStageIndex(phaseKey) {
 async function sendChat() {
   if (!sessionId.value || !userInput.value.trim()) return
   loading.value = true
+  statusMessage.value = '正在检索知识库...'
   const inputText = userInput.value.trim()
   userInput.value = ''
+  stageModifyCount.value[currentPhase.value] = (stageModifyCount.value[currentPhase.value] || 0) + 1
 
   // 前端日志
   const startTime = performance.now()
@@ -618,6 +636,7 @@ async function sendChat() {
             const data = JSON.parse(line.slice(6))
             if (data.type === 'status') {
               console.log(`[FRONTEND] ${(performance.now()-startTime).toFixed(0)}ms 收到status: ${data.content}`)
+              statusMessage.value = data.content || '正在生成回答...'
             } else if (data.type === 'token') {
               if (!firstTokenTime) {
                 firstTokenTime = performance.now()
@@ -661,22 +680,104 @@ async function sendChat() {
 }
 
 // 确认并进入下一阶段：确认当前阶段完成，推进
+// LangGraph 架构: confirm → advance → generate（下一阶段），全部在一个 SSE 流中完成
 async function confirmAndNext() {
   if (!sessionId.value) return
   loading.value = true
+  statusMessage.value = '正在确认阶段...'
   try {
-    // 标记当前阶段为confirmed
+    const stageOrder = ['problem', 'analysis', 'detail', 'prd']
+    const currentIdx = stageOrder.indexOf(currentPhase.value)
+    const isLastStage = currentIdx >= stageOrder.length - 1
+    const nextIdx = isLastStage ? -1 : currentIdx + 1
+    const nextPhaseKey = isLastStage ? null : phases[nextIdx].key
+
+    // 如果有未发送的用户输入，先保存到当前阶段对话历史
+    const pendingInput = userInput.value.trim()
+    if (pendingInput) {
+      if (!chatHistory.value[currentPhase.value]) {
+        chatHistory.value[currentPhase.value] = []
+      }
+      chatHistory.value[currentPhase.value].push({
+        role: 'user',
+        content: pendingInput
+      })
+    }
+
+    // 调用确认接口（SSE 流式，LangGraph 在确认后会同步生成下一阶段内容）
+    // 传入 pendingInput，让后端在确认时将用户输入纳入上下文
+    const streamRes = await pmSolutionApi.confirm(sessionId.value, pendingInput || null)
+
+    // API 握手成功后才标记 confirmed
     phaseStatuses.value[currentPhase.value] = 'confirmed'
 
-    // 调用确认接口
-    const confirmRes = await pmSolutionApi.confirm(sessionId.value)
+    if (!isLastStage) {
+      // 推进到下一阶段
+      currentPhase.value = nextPhaseKey
+      phaseStatuses.value[nextPhaseKey] = 'active'
+      stageModifyCount.value[nextPhaseKey] = 1
 
-    const stageOrder = ['problem', 'analysis', 'detail', 'prd']
-    const currentIdx = stageOrder.indexOf(confirmRes.data.stage_type)
+      // 初始化下一阶段的对话历史（backend 会在 stage_chats 中记录 init prompt）
+      const initPrompt = `请开始${phases[nextIdx].label}阶段的分析`
+      chatHistory.value[nextPhaseKey] = [{
+        role: 'user',
+        content: initPrompt
+      }]
+    }
 
-    // 判断是否已完成所有阶段
-    if (currentIdx >= stageOrder.length - 1) {
-      // 已完成PRD阶段，导出
+    // 读取 SSE 流
+    const reader = streamRes.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let assistantContent = ''
+    let streamHadEvents = false
+    let streamStage = nextPhaseKey  // 流中内容属于哪个阶段
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            streamHadEvents = true
+
+            if (data.type === 'status') {
+              statusMessage.value = data.content || '正在生成...'
+            } else if (data.type === 'token') {
+              assistantContent += data.content
+              if (streamStage) {
+                phaseOutputs.value[streamStage] = assistantContent
+              }
+            } else if (data.type === 'done') {
+              // done 事件中的 stage 告知内容属于哪个阶段
+              const doneStage = data.stage || streamStage
+              if (doneStage && chatHistory.value[doneStage]) {
+                chatHistory.value[doneStage].push({
+                  role: 'assistant',
+                  content: assistantContent,
+                  sources: data.sources || []
+                })
+                phaseOutputs.value[doneStage] = ''
+                retrievedChunks.value = data.sources || []
+                phaseStatuses.value[doneStage] = 'generated'
+              }
+              assistantContent = ''
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+      }
+    }
+
+    // 流结束后：如果是最后阶段，导出 PRD
+    if (isLastStage) {
       try {
         const exportRes = await pmSolutionApi.exportPRD(sessionId.value)
         downloadMarkdown(exportRes.data.prd_content, exportRes.data.filename)
@@ -684,132 +785,6 @@ async function confirmAndNext() {
       } catch (e) {
         console.error('Export failed:', e)
         alert('导出PRD失败')
-      }
-    } else {
-      // 推进到下一阶段
-      const nextIdx = currentIdx + 1
-      const nextPhaseKey = phases[nextIdx].key
-      currentPhase.value = nextPhaseKey
-      phaseStatuses.value[nextPhaseKey] = 'active'
-
-      // 初始化下一阶段的对话历史
-      chatHistory.value[nextPhaseKey] = []
-
-      // 自动发送初始对话启动下一阶段（传入当前阶段索引，让后端知道我们想生成下一阶段）
-      const initPrompt = `请开始${phases[nextIdx].label}阶段的分析`
-      chatHistory.value[nextPhaseKey].push({
-        role: 'user',
-        content: initPrompt
-      })
-
-      let assistantContent = ''
-      // 传入当前阶段索引（我们已经在nextIdx阶段，想生成这个阶段的内容）
-      const streamRes = await pmSolutionApi.chatStream(sessionId.value, initPrompt, nextIdx)
-
-      const reader = streamRes.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6))
-              if (data.type === 'token') {
-                assistantContent += data.content
-                phaseOutputs.value[nextPhaseKey] = assistantContent
-              } else if (data.type === 'done') {
-                // 保存assistant回复
-                chatHistory.value[nextPhaseKey].push({
-                  role: 'assistant',
-                  content: assistantContent,
-                  sources: data.sources || []
-                })
-                phaseOutputs.value[nextPhaseKey] = ''
-                retrievedChunks.value = data.sources || []
-                // 更新阶段状态为generated
-                phaseStatuses.value[nextPhaseKey] = 'generated'
-              }
-            } catch (e) {
-              // Ignore parse errors
-            }
-          }
-        }
-      }
-    }
-
-    userInput.value = ''
-  } catch (e) {
-    console.error('Confirm failed:', e)
-    alert('操作失败: ' + (e.response?.data?.detail || '请重试'))
-  } finally {
-    loading.value = false
-  }
-}
-
-async function confirmStep() {
-  if (!sessionId.value) return
-  loading.value = true
-  try {
-    // 1. 调用确认接口，推进阶段
-    const confirmRes = await pmSolutionApi.confirm(sessionId.value)
-
-    // 更新当前阶段
-    const nextStage = confirmRes.data.stage_type
-    const stageOrder = ['problem', 'analysis', 'detail', 'prd']
-    const nextIdx = stageOrder.indexOf(nextStage) + 1
-
-    if (nextIdx < phases.length) {
-      currentPhase.value = phases[nextIdx].key
-
-      // 2. 如果有用户输入，发送对话
-      if (userInput.value.trim()) {
-        phaseOutputs.value[currentPhase.value] = ''
-        const streamRes = await pmSolutionApi.chatStream(sessionId.value, userInput.value.trim())
-
-        // 解析SSE流
-        const reader = streamRes.body.getReader()
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6))
-                if (data.type === 'token') {
-                  phaseOutputs.value[currentPhase.value] += data.content
-                } else if (data.type === 'done') {
-                  retrievedChunks.value = data.sources || []
-                }
-              } catch (e) {
-                // Ignore parse errors
-              }
-            }
-          }
-        }
-      }
-    } else {
-      // 已完成所有阶段，导出PRD
-      try {
-        const exportRes = await pmSolutionApi.exportPRD(sessionId.value)
-        downloadMarkdown(exportRes.data.prd_content, exportRes.data.filename)
-      } catch (e) {
-        console.error('Export failed:', e)
       }
     }
 
@@ -828,15 +803,19 @@ async function rollbackTo(targetPhase) {
   // 如果目标阶段已有对话历史，直接切换显示（不重新生成）
   if (chatHistory.value[targetPhase] && chatHistory.value[targetPhase].length > 0) {
     currentPhase.value = targetPhase
-    phaseStatuses.value[targetPhase] = 'active'
+    // 不修改 phaseStatuses，保持原有状态，否则已确认阶段会变灰色无法点击
     // 从历史中获取sources
     const lastAssistant = chatHistory.value[targetPhase].filter(c => c.role === 'assistant').pop()
     retrievedChunks.value = lastAssistant?.sources || []
+    // 同步后端 current_stage（不影响阶段数据）
+    const targetIdx = _getStageIndex(targetPhase)
+    pmSolutionApi.switchStage(sessionId.value, targetIdx).catch(() => {})
     return
   }
 
   // 目标阶段没有历史，需要加载
   loading.value = true
+  statusMessage.value = '正在加载阶段内容...'
   try {
     const targetIdx = _getStageIndex(targetPhase)
 

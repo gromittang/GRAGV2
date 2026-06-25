@@ -2,7 +2,7 @@
   "mcpServers": {
     "code-memory": {
       "type": "stdio",
-      "command": "code-memory",
+      "command": "C:\\Users\\Administrator\\.code-memory\\venv\\Scripts\\code-memory.exe",
       "args": [],
       "env": {
         "HF_ENDPOINT": "https://hf-mirror.com",

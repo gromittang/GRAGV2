@@ -9,6 +9,10 @@ from datetime import datetime
 import os
 import uuid
 
+from app.core.logging import get_logger
+
+_log = get_logger("api.documents")
+
 from app.models.document import get_session, Knowledge, Document, Paragraph, File as FileModel
 
 router = APIRouter()
@@ -151,13 +155,9 @@ async def process_document_async(doc_id: str, file_path: str, knowledge_id: str)
             session.add(para)
 
         # 使用IndexBuilder正确添加到知识库专用向量库
+        # 直接传入已分割的 nodes，避免 IndexBuilder 二次分割
         builder = IndexBuilder(knowledge_id)
-        from llama_index.core import Document as LlamaDoc
-        llama_docs = [
-            LlamaDoc(text=n.text, metadata=n.metadata, doc_id=str(uuid.uuid4()))
-            for n in nodes
-        ]
-        builder.build_index_from_docs(llama_docs)
+        builder.build_index(nodes)
 
         doc.status = "2"
         doc.char_length = sum(len(n.text) for n in nodes)
@@ -166,7 +166,7 @@ async def process_document_async(doc_id: str, file_path: str, knowledge_id: str)
     except Exception as e:
         doc.status = "3"
         session.commit()
-        print(f"[Document] 处理失败: {e}")
+        _log.error("处理失败: {}", e)
 
     session.close()
 
@@ -248,6 +248,50 @@ async def delete_document(document_id: str):
         raise HTTPException(500, f"删除失败: {str(e)}")
 
 
+@router.post("/{document_id}/reprocess")
+async def reprocess_document(document_id: str):
+    """重新处理失败的文档"""
+    session = get_session()
+    try:
+        doc = session.query(Document).filter(Document.id == document_id).first()
+        if not doc:
+            session.close()
+            raise HTTPException(404, "文档不存在")
+        if doc.status != "3":
+            session.close()
+            raise HTTPException(400, "仅失败状态的文档可重新处理")
+
+        doc.status = "0"
+        # 获取 knowledge_id 和 file_path
+        kb_id = doc.knowledge_id
+        file_name = doc.name
+        session.commit()
+        # 保持 session 打开以用于后续处理
+        session.close()
+        session = None
+
+        # 重新执行处理流水线
+        import os
+        from app.config import get_settings
+        settings = get_settings()
+        file_path = os.path.join(settings.data_dir, "uploads", f"{document_id}_{file_name}")
+
+        if not os.path.exists(file_path):
+            raise HTTPException(404, "源文件不存在，无法重新处理")
+
+        await process_document_async(document_id, file_path, kb_id)
+
+        return {"success": True, "message": "文档已重新处理"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if session:
+            session.rollback()
+            session.close()
+        raise HTTPException(500, f"重新处理失败: {str(e)}")
+
+
 @router.post("/knowledge", response_model=KnowledgeResponse)
 async def create_knowledge(request: KnowledgeCreateRequest):
     """创建新知识库"""
@@ -260,7 +304,15 @@ async def create_knowledge(request: KnowledgeCreateRequest):
 
         knowledge = Knowledge(name=request.name, description=request.description)
         session.add(knowledge)
-        session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            session.close()
+            err_msg = str(e).lower()
+            if "unique" in err_msg or "already exists" in err_msg:
+                raise HTTPException(400, f"知识库 '{request.name}' 已存在")
+            raise HTTPException(500, f"创建知识库失败: {str(e)}")
 
         kb_id = knowledge.id
         created_at = knowledge.created_at.strftime("%Y-%m-%d %H:%M:%S")

@@ -77,6 +77,60 @@
           </div>
         </div>
       </div>
+
+      <!-- Feedback (AI messages only) -->
+      <div v-if="role === 'assistant' && messageIndex >= 0" class="mt-2">
+        <div v-if="feedbackDone" class="text-[10px] text-accent-green font-mono">
+          已反馈
+        </div>
+        <div v-else class="flex items-center gap-2">
+          <button
+            @click="feedbackRating.helpful = true; feedbackExpanded = true"
+            :class="feedbackExpanded && feedbackRating.helpful ? 'border-accent-green/40 text-accent-green bg-accent-green/5' : 'border-grid/50 text-primary/40 hover:border-accent-green/30 hover:text-accent-green'"
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono border transition-colors"
+          >
+            <Icon icon="lucide:thumbs-up" class="text-xs" />
+          </button>
+          <button
+            @click="feedbackRating.helpful = false; feedbackExpanded = true"
+            :class="feedbackExpanded && !feedbackRating.helpful ? 'border-red-300 text-red-500 bg-red-50' : 'border-grid/50 text-primary/40 hover:border-red-300 hover:text-red-400'"
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono border transition-colors"
+          >
+            <Icon icon="lucide:thumbs-down" class="text-xs" />
+          </button>
+        </div>
+
+        <!-- Expanded detail -->
+        <div v-if="feedbackExpanded && !feedbackDone" class="mt-2 space-y-2 border border-grid p-3 bg-warm-gray/30">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-primary/60 font-mono">来源准确？</span>
+            <button
+              @click="feedbackRating.sourceAccurate = !feedbackRating.sourceAccurate"
+              :class="feedbackRating.sourceAccurate ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              class="px-2 py-0.5 text-[10px] font-mono border transition-colors"
+            >{{ feedbackRating.sourceAccurate ? '是' : '否' }}</button>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] text-primary/60 font-mono">回答完整？</span>
+            <button
+              @click="feedbackRating.answerComplete = !feedbackRating.answerComplete"
+              :class="feedbackRating.answerComplete ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              class="px-2 py-0.5 text-[10px] font-mono border transition-colors"
+            >{{ feedbackRating.answerComplete ? '是' : '否' }}</button>
+          </div>
+          <textarea
+            v-model="feedbackRating.comment"
+            placeholder="补充说明（可选）"
+            rows="2"
+            class="w-full border border-grid p-1.5 text-[11px] font-mono text-primary/60 bg-white resize-none focus:outline-none focus:border-accent-orange/40"
+          ></textarea>
+          <button
+            @click="handleFeedbackSubmit"
+            :disabled="feedbackSubmitting"
+            class="w-full h-7 border border-accent-orange/40 text-[11px] font-mono text-accent-orange hover:bg-accent-orange hover:text-white transition-colors disabled:opacity-40"
+          >{{ feedbackSubmitting ? '提交中...' : '提交评价' }}</button>
+        </div>
+      </div>
     </div>
 
     <!-- Preview Modal -->
@@ -114,8 +168,8 @@ import { Icon } from '@iconify/vue'
 import { marked } from 'marked'
 import PreviewModal from '../knowledge/PreviewModal.vue'
 import documentsV2Api from '../../api/documentsV2'
+import { useChatStore } from '../../stores/chat'
 
-// 配置marked，禁用headerIds和mangle防止XSS
 marked.setOptions({
   headerIds: false,
   mangle: false
@@ -126,7 +180,11 @@ const props = defineProps({
   content: { type: String, default: '' },
   tool: { type: String, default: '' },
   sources: { type: Array, default: null },
+  messageIndex: { type: Number, default: -1 },
+  feedbackSubmitted: { type: Boolean, default: false },
 })
+
+const store = useChatStore()
 
 // 预览状态
 const previewVisible = ref(false)
@@ -135,6 +193,32 @@ const previewDoc = ref(null)
 // 图片预览状态
 const imagePreviewVisible = ref(false)
 const imagePreviewUrl = ref('')
+
+// 反馈状态
+const feedbackExpanded = ref(false)
+const feedbackSubmitting = ref(false)
+const feedbackDone = ref(false)
+const feedbackRating = ref({
+  helpful: true,
+  sourceAccurate: true,
+  answerComplete: true,
+  comment: '',
+})
+
+async function handleFeedbackSubmit() {
+  if (props.messageIndex < 0) return
+  feedbackSubmitting.value = true
+  const ok = await store.submitFeedback(props.messageIndex, {
+    helpful: feedbackRating.value.helpful,
+    source_accurate: feedbackRating.value.sourceAccurate,
+    answer_complete: feedbackRating.value.answerComplete,
+    comment: feedbackRating.value.comment,
+  })
+  feedbackSubmitting.value = false
+  if (ok) {
+    feedbackDone.value = true
+  }
+}
 
 // MD解析内容：只对assistant角色的消息进行MD解析
 const renderedContent = computed(() => {
@@ -211,7 +295,7 @@ function getImageUrl(url) {
   if (!url) return ''
   if (url.startsWith('/')) {
     // 相对路径，需要拼接后端地址
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8812'
     return baseUrl + url
   }
   return url

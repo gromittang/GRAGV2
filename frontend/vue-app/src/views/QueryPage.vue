@@ -86,6 +86,9 @@
             @followUp="store.handleFollowUp($event)"
           />
 
+          <!-- 查询评价表单 -->
+          <FeedbackForm />
+
           <!-- Empty state -->
           <div v-if="!store.loading && !store.hasResults && !store.sql" class="py-20 text-center">
             <Icon icon="lucide:search" class="text-5xl text-grid mb-4 mx-auto" />
@@ -122,6 +125,7 @@ import ExportButton from '../components/query/ExportButton.vue'
 import InsightCard from '../components/query/InsightCard.vue'
 import QueryHistory from '../components/query/QueryHistory.vue'
 import FloatingWindow from '../components/query/FloatingWindow.vue'
+import FeedbackForm from '../components/query/FeedbackForm.vue'
 import schemaApi from '../api/schema'
 
 const store = useQueryStore()

@@ -9,8 +9,10 @@ from typing import Optional
 import os
 
 from app.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+_log = get_logger("core.vector_store")
 
 
 class VectorStoreManager:
@@ -30,7 +32,7 @@ class VectorStoreManager:
                 path=persist_dir,
                 settings=ChromaSettings(anonymized_telemetry=False)
             )
-            print(f"[VectorStore] ChromaDB 初始化: {persist_dir}")
+            _log.info("ChromaDB 初始化: {}", persist_dir)
 
         return self._client
 
@@ -46,13 +48,13 @@ class VectorStoreManager:
 
         try:
             collection = client.get_collection(name=collection_name)
-            print(f"[VectorStore] 使用已存在集合: {collection_name}")
+            _log.info("使用已存在集合: {}", collection_name)
         except:
             collection = client.create_collection(
                 name=collection_name,
                 metadata={"hnsw:space": "cosine"}
             )
-            print(f"[VectorStore] 创建新集合: {collection_name}")
+            _log.info("创建新集合: {}", collection_name)
 
         return collection
 
@@ -67,7 +69,7 @@ class VectorStoreManager:
         collection_name = f"{self._collection_name}_{knowledge_id}"
         try:
             client.delete_collection(name=collection_name)
-            print(f"[VectorStore] 删除集合: {collection_name}")
+            _log.info("删除集合: {}", collection_name)
         except:
             pass
 

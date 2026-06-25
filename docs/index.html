@@ -38,7 +38,7 @@
       <h1 class="hero-title">
         <span class="hero-title-accent">仓库智能知识库 V2</span>
       </h1>
-      <p class="hero-subtitle">知识库问答 + 自然语言数据查询，让仓库人员告别SQL</p>
+      <p class="hero-subtitle">RAG 知识库问答 + NL2SQL 自然语言数据查询 + PM 方案工作室，三位一体的仓库 AI 工作台</p>
       <div class="hero-highlight">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
@@ -46,7 +46,7 @@
           <line x1="6" y1="6" x2="6.01" y2="6"></line>
           <line x1="6" y1="18" x2="6.01" y2="18"></line>
         </svg>
-        Docker 一键启动，内置 Data Copilot 数据智能助手
+        Docker 一键启动 | LangGraph 编排 | 混合检索 | 图片理解 | Markdown 渲染
       </div>
       <div class="hero-buttons">
         <a href="#quickstart" class="btn btn-primary">
@@ -70,20 +70,20 @@
   <section class="stats">
     <div class="stats-grid">
       <div class="stat-item">
-        <div class="stat-number">3+</div>
-        <div class="stat-label">文档格式支持</div>
+        <div class="stat-number">514</div>
+        <div class="stat-label">业务数据表</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">7900+</div>
+        <div class="stat-number">7904</div>
         <div class="stat-label">Schema字段索引</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">NL2SQL</div>
-        <div class="stat-label">三层架构</div>
+        <div class="stat-number">10+</div>
+        <div class="stat-label">业务域覆盖</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">Docker</div>
-        <div class="stat-label">一键部署</div>
+        <div class="stat-number">12</div>
+        <div class="stat-label">API 端点</div>
       </div>
     </div>
   </section>
@@ -92,48 +92,48 @@
   <section class="features" id="features">
     <div class="container">
       <h2 class="section-title">核心能力</h2>
-      <p class="section-subtitle">不仅是知识库——WMSRAG V2 让仓库人员快速查询操作规范，直接用自然语言查询业务数据</p>
+      <p class="section-subtitle">三大模块协同：知识库 RAG 问答 + Data Copilot 数据查询 + PM 方案工作室，覆盖仓库日常工作的完整 AI 辅助链</p>
       <div class="features-grid">
         <!-- Feature 1: Data Copilot -->
         <div class="feature-card feature-highlight">
           <div class="feature-icon">🤖</div>
           <h3 class="feature-title">Data Copilot</h3>
-          <p class="feature-desc">企业级 NL2SQL 数据智能助手。用户直接问"本月入库单有多少"，系统自动生成SQL执行，并提供AI业务洞察分析。<br><br><strong>三层架构：</strong>Schema检索 → SQL生成 → 安全校验 → AI分析</p>
+          <p class="feature-desc">企业级 NL2SQL 数据智能助手。用户用自然语言提问，系统自动完成 Schema 语义检索 → SQL 生成 → 安全校验 → 执行 → AI 洞察分析的完整流水线。<br><br><strong>语义层：</strong>覆盖库存、出库、拣货、配送、收货、商品、仓位、用户等 10+ 业务域，514 张表 / 7904 字段向量化索引。</p>
         </div>
 
         <!-- Feature 2: 智能问答 -->
         <div class="feature-card">
           <div class="feature-icon">🧠</div>
           <h3 class="feature-title">智能问答</h3>
-          <p class="feature-desc">基于 RAG 的操作手册问答，支持图片理解。用户提问后，系统自动检索相关文档段落，结合 DeepSeek LLM 生成准确答案，并展示参考来源。</p>
+          <p class="feature-desc">基于 RAG 的操作手册问答。Query 改写 + BM25 关键词检索 + 语义向量检索双路并行，RRF 融合 + bge-reranker 精排，结合 DeepSeek LLM 流式生成答案。<br><br><strong>图片理解：</strong>文档中的图片自动提取并展示，AI 可结合图片内容回答。</p>
         </div>
 
         <!-- Feature 3: 文档管理 -->
         <div class="feature-card">
           <div class="feature-icon">📚</div>
           <h3 class="feature-title">文档管理</h3>
-          <p class="feature-desc">支持 Word/PDF/TXT 文档上传和自动解析，图片自动提取并预览。文档按知识库分类管理，支持批量操作、删除、重新索引。</p>
+          <p class="feature-desc">支持 Word / PDF / TXT 文档上传和自动解析。图片自动提取并支持预览，文档按知识库分类隔离管理。支持批量操作、删除、重新索引。<br><br><strong>中文优化：</strong>jieba 分词 + 2-4 字 n-gram，精准匹配仓库专业术语。</p>
         </div>
 
         <!-- Feature 4: 混合检索 -->
         <div class="feature-card">
           <div class="feature-icon">⚡</div>
           <h3 class="feature-title">混合检索</h3>
-          <p class="feature-desc">BM25 关键词检索 + 语义向量检索双重检索，RRF 融合排序。中文优化：自动提取 2-4 字 n-gram，精准匹配仓库专业术语。</p>
+          <p class="feature-desc">LangGraph 编排的多阶段检索管线：Query 改写 → BM25 + 向量双路并行检索 → RRF 融合排序 → Cross-Encoder 重排序 → 相关性阈值过滤。<br><br><strong>知识库隔离：</strong>每个知识库独立 ChromaDB 集合，互不干扰。</p>
         </div>
 
         <!-- Feature 5: PM方案工作室 -->
         <div class="feature-card">
           <div class="feature-icon">🎯</div>
           <h3 class="feature-title">PM方案工作室</h3>
-          <p class="feature-desc">支持产品经理完成"问题诊断 → 方案对比 → 方案细化 → PRD生成"完整链路。内置智能 BM25 搜索，快速定位相关需求文档。</p>
+          <p class="feature-desc">四阶段结构化方案设计：问题定义 → 方案分析 → 方案细化 → PRD 生成。每个阶段可独立确认、回溯、重新生成。<br><br><strong>时间轴导航：</strong>顶部 TimelineStepper 替代传统步骤条，直观展示阶段进度与状态。</p>
         </div>
 
-        <!-- Feature 6: AI洞察分析 -->
+        <!-- Feature 6: Schema 浏览器 -->
         <div class="feature-card">
-          <div class="feature-icon">💡</div>
-          <h3 class="feature-title">AI洞察分析</h3>
-          <p class="feature-desc">查询结果自动生成业务洞察：关键结论、异常点检测、趋势判断、建议行动。让数据变成决策依据，而非枯燥表格。</p>
+          <div class="feature-icon">🔍</div>
+          <h3 class="feature-title">Schema 浏览器</h3>
+          <p class="feature-desc">可视化数据库表结构浏览器。支持关键词实时搜索 514 张表，点击表名弹出悬浮窗查看完整字段详情（类型、宽度、描述）。最多同时打开 5 个悬浮窗，可自由拖拽和调整大小。</p>
         </div>
       </div>
     </div>
@@ -143,31 +143,53 @@
   <section class="data-copilot" id="data-copilot">
     <div class="container">
       <h2 class="section-title">Data Copilot 数据智能助手</h2>
-      <p class="section-subtitle">三层NL2SQL架构，让不会写SQL的人也能轻松查数据</p>
+      <p class="section-subtitle">五阶段 NL2SQL 流水线 + 语义层驱动，让不会写 SQL 的人也能轻松查数据</p>
 
       <div class="copilot-flow">
         <div class="flow-step">
           <div class="flow-icon">🔍</div>
           <div class="flow-title">Schema检索</div>
-          <div class="flow-desc">Embedding语义匹配，从7900+字段中定位相关表</div>
+          <div class="flow-desc">BGE Embedding 语义匹配，从 7904 字段中定位相关表</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
           <div class="flow-icon">📝</div>
           <div class="flow-title">SQL生成</div>
-          <div class="flow-desc">LLM受控生成，只使用给定表和字段</div>
+          <div class="flow-desc">LLM 受控生成，语义层规则注入 Prompt，仅使用给定表和字段</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
           <div class="flow-icon">🛡️</div>
           <div class="flow-title">安全校验</div>
-          <div class="flow-desc">禁止危险操作，强制LIMIT，禁止SELECT *</div>
+          <div class="flow-desc">禁止 DROP/DELETE/UPDATE/INSERT，强制 LIMIT，自动追加</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-icon">⚡</div>
+          <div class="flow-title">SQL执行</div>
+          <div class="flow-desc">aiomysql 异步连接池，Decimal 自动转换，异常友好提示</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
           <div class="flow-icon">💡</div>
           <div class="flow-title">AI分析</div>
-          <div class="flow-desc">业务洞察、异常检测、追问建议</div>
+          <div class="flow-desc">关键结论、异常检测、趋势判断、追问建议，数据变决策</div>
+        </div>
+      </div>
+
+      <div class="copilot-domains">
+        <h3 class="domains-title">语义层覆盖的业务域</h3>
+        <div class="domains-grid">
+          <span class="domain-badge">📦 库存</span>
+          <span class="domain-badge">🚚 出库</span>
+          <span class="domain-badge">📥 收货/验收</span>
+          <span class="domain-badge">🧺 拣货</span>
+          <span class="domain-badge">🏍 配送</span>
+          <span class="domain-badge">📋 商品信息</span>
+          <span class="domain-badge">🏠 仓位</span>
+          <span class="domain-badge">👤 用户</span>
+          <span class="domain-badge">🔒 库存锁定</span>
+          <span class="domain-badge">⚙ 商品仓库设置</span>
         </div>
       </div>
 
@@ -176,15 +198,21 @@
         <div class="example-content">
           <div class="example-input">
             <span class="example-label">用户问题：</span>
-            <span class="example-text">"查询最近5条地区数据"</span>
+            <span class="example-text">"本月良品仓有哪些商品库存不足100？"</span>
           </div>
           <div class="example-sql">
             <span class="example-label">生成SQL：</span>
-            <code>SELECT DataRightCode, DataRightName FROM tFrsDataRight ORDER BY DataRightCode DESC LIMIT 5</code>
+            <code>SELECT s.plu_code, p.plu_name, SUM(s.stork_count) as total_stock
+FROM sto_stock_batch_yyyymm_org s
+JOIN cob_plu p ON s.plu_code = p.plu_code
+WHERE s.store_code = '01' AND p.is_active = 1
+GROUP BY s.plu_code, p.plu_name
+HAVING SUM(s.stork_count) &lt; 100
+LIMIT 100</code>
           </div>
           <div class="example-insight">
             <span class="example-label">AI洞察：</span>
-            <span class="example-text">当前仅有1条数据权限配置处于"未启用"状态，建议检查业务系统权限功能开关...</span>
+            <span class="example-text">当前良品仓共有 23 种商品库存低于 100，其中 5 种已接近零库存。建议优先补货：矿泉水(库存12)、纸巾(库存8)...</span>
           </div>
         </div>
       </div>
@@ -215,33 +243,38 @@ docker-compose up -d</pre>
         <div class="step">
           <div class="step-number">2</div>
           <h3 class="step-title">配置 API Key + MySQL</h3>
-          <p class="step-desc">编辑环境变量，配置 DeepSeek API 和数据库</p>
+          <p class="step-desc">编辑环境变量，配置 LLM API 和业务数据库</p>
           <div class="code-block">
             <button class="copy-btn" onclick="copyCode(this)">📋</button>
             <pre># 编辑 backend/.env 文件
 DEEPSEEK_API_KEY=your_api_key_here
 
-# MySQL配置（Data Copilot）
+# MySQL配置（Data Copilot 业务数据源）
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=your_password
-MYSQL_DATABASE=wms</pre>
+MYSQL_DATABASE=wms
+
+# LLM Provider（可选：deepseek/openai/anthropic）
+LLM_PROVIDER=deepseek</pre>
           </div>
         </div>
 
         <div class="step">
           <div class="step-number">3</div>
           <h3 class="step-title">访问系统</h3>
-          <p class="step-desc">打开浏览器，开始使用知识库和Data Copilot</p>
+          <p class="step-desc">打开浏览器，开始使用三大模块</p>
           <div class="code-block">
             <button class="copy-btn" onclick="copyCode(this)">📋</button>
             <pre># 访问前端界面
 http://localhost:8812
 
-# Data Copilot: /query 路径
-# 智能问答: /chat 路径
-# PM工作室: /pm 路径</pre>
+# Data Copilot:  /query     自然语言查数据
+# 智能问答:      /chat      知识库 RAG 对话
+# PM工作室:      /pm-studio  方案设计四阶段
+# 知识库管理:    /knowledge  文档上传与索引
+# 系统设置:      /settings   模型与连接配置</pre>
           </div>
         </div>
       </div>
@@ -252,7 +285,7 @@ http://localhost:8812
   <section class="api-section" id="api">
     <div class="container">
       <h2 class="section-title">API 参考</h2>
-      <p class="section-subtitle">核心接口前缀 /api/v1，默认端口 8812</p>
+      <p class="section-subtitle">核心接口前缀 /api/v1，默认端口 8812，共 12 个 Data Copilot 端点</p>
       <div class="api-table">
         <table>
           <thead>
@@ -266,42 +299,72 @@ http://localhost:8812
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/query/</td>
-              <td>自然语言查询（NL→SQL→结果→Insight）</td>
+              <td>完整 NL2SQL 流水线（NL → SQL → 执行 → Insight）</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/query/execute</td>
-              <td>直接执行SQL（带安全校验）</td>
+              <td>直接执行 SQL（带安全校验 + 自动 LIMIT）</td>
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
               <td>/api/v1/query/schema</td>
-              <td>获取数据库Schema（514表）</td>
+              <td>获取完整数据库 Schema（514 表）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/query/schema/search</td>
+              <td>关键词搜索表/字段（SchemaBrowser 搜索框）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/query/schema/table/{name}/fields</td>
+              <td>获取表字段详情（悬浮窗展示）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/query/test-connection</td>
+              <td>测试 MySQL 连接状态</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/query/preview/{table}</td>
+              <td>预览表数据前 N 行</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/query/insight</td>
-              <td>为查询结果生成AI分析</td>
+              <td>为已有查询结果重新生成 AI 分析</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/query/history/{session_id}</td>
+              <td>获取会话查询历史</td>
+            </tr>
+            <tr>
+              <td><span class="method-post">POST</span></td>
+              <td>/api/v1/query/history/{session_id}</td>
+              <td>保存查询历史记录</td>
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
               <td>/api/v1/docs</td>
-              <td>获取文档列表</td>
+              <td>获取文档列表（按知识库分类）</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/docs/upload</td>
-              <td>上传文档（支持 Word/PDF/TXT）</td>
+              <td>上传文档（Word / PDF / TXT，最大 10MB）</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/chat/stream</td>
-              <td>SSE流式智能问答</td>
+              <td>SSE 流式智能问答（Markdown 渲染 + 图片展示）</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/pm-solution/sessions</td>
-              <td>创建PM方案会话</td>
+              <td>创建 PM 方案会话</td>
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
@@ -318,44 +381,47 @@ http://localhost:8812
   <section class="architecture" id="architecture">
     <div class="container">
       <h2 class="section-title">系统架构</h2>
-      <p class="section-subtitle">完整的技术栈与数据流程</p>
+      <p class="section-subtitle">前后端分离 + LangGraph 编排 + 多数据源协同</p>
       <div class="tech-stack">
         <span class="tech-badge">FastAPI</span>
         <span class="tech-badge">LangChain</span>
+        <span class="tech-badge">LangGraph</span>
         <span class="tech-badge">LlamaIndex</span>
         <span class="tech-badge">ChromaDB</span>
         <span class="tech-badge">SQLite</span>
         <span class="tech-badge">MySQL</span>
         <span class="tech-badge">DeepSeek</span>
         <span class="tech-badge">Vue 3</span>
+        <span class="tech-badge">Pinia</span>
+        <span class="tech-badge">TailwindCSS</span>
         <span class="tech-badge">Docker</span>
       </div>
       <div class="arch-diagram">
         <div class="arch-flow">
           <div class="arch-node">
-            <strong>用户</strong>
-            <br>Vue 前端
+            <strong>Vue 3 前端</strong>
+            <br>Chat | Query | PM | Knowledge
           </div>
           <span class="arch-arrow">→</span>
           <div class="arch-node">
             <strong>FastAPI</strong>
-            <br>后端 API
+            <br>/api/v1 REST + SSE
           </div>
           <span class="arch-arrow">→</span>
           <div class="arch-node">
-            <strong>Agent</strong>
-            <br>Data Copilot
+            <strong>LangGraph</strong>
+            <br>RAG 检索编排
           </div>
           <span class="arch-arrow">→</span>
           <div class="arch-node">
-            <strong>DeepSeek</strong>
-            <br>LLM
+            <strong>DeepSeek LLM</strong>
+            <br>生成 + 分析
           </div>
         </div>
         <div class="arch-flow" style="margin-top: 24px;">
           <div class="arch-node">
             <strong>SQLite</strong>
-            <br>文档存储
+            <br>元数据 + 历史
           </div>
           <span class="arch-arrow">↔</span>
           <div class="arch-node">
@@ -365,12 +431,12 @@ http://localhost:8812
           <span class="arch-arrow">↔</span>
           <div class="arch-node">
             <strong>MySQL</strong>
-            <br>业务数据
+            <br>业务数据 (514表)
           </div>
           <span class="arch-arrow">↔</span>
           <div class="arch-node">
-            <strong>Schema Index</strong>
-            <br>7904条
+            <strong>BGE Embedding</strong>
+            <br>语义检索 (7904字段)
           </div>
         </div>
       </div>
@@ -381,8 +447,8 @@ http://localhost:8812
   <footer class="footer">
     <div class="container">
       <h3 class="footer-title">WMSRAG V2</h3>
-      <p class="footer-desc">仓库智能知识库 + Data Copilot — 一键部署，让仓库人员秒查操作规范，直接用自然语言查数据</p>
-      <p class="footer-tech">Powered by FastAPI + LangChain + LlamaIndex + ChromaDB + SQLite + MySQL + DeepSeek + Vue 3</p>
+      <p class="footer-desc">仓库智能知识库 + Data Copilot + PM 方案工作室 — 三位一体的仓库 AI 工作台，Docker 一键部署</p>
+      <p class="footer-tech">Powered by FastAPI + LangChain + LangGraph + LlamaIndex + ChromaDB + SQLite + MySQL + DeepSeek + BGE + Vue 3 + Pinia + TailwindCSS</p>
     </div>
   </footer>
 

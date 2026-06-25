@@ -12,8 +12,10 @@ import re
 
 from app.core.settings import get_industry_settings
 from app.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+_log = get_logger("rag.processor")
 
 # 图片存储目录
 IMAGES_DIR = os.path.join(_settings.data_dir, "images")
@@ -72,7 +74,7 @@ class DocumentProcessor:
             docs = self._parse_docx_ordered(file_path, doc_id, metadata)
 
         else:
-            print(f"[DocumentProcessor] 不支持的文件类型: {file_ext}")
+            _log.warning("不支持的文件类型: {}", file_ext)
 
         return docs
 
@@ -138,7 +140,7 @@ class DocumentProcessor:
                         image_count += 1
 
                 except Exception as e:
-                    print(f"[PDF] 图片提取失败: {e}")
+                    _log.warning("图片提取失败: {}", e)
 
             # 按y位置排序（模拟原始顺序）
             page_elements.sort(key=lambda x: x["y"] if x["y"] else 0)
@@ -158,7 +160,7 @@ class DocumentProcessor:
         )
         docs.append(doc)
 
-        print(f"[PDF] 解析完成: {len(full_text)} 字符, {len(self.images)} 张图片")
+        _log.info("PDF 解析完成: {} 字符, {} 张图片", len(full_text), len(self.images))
         return docs
 
     def _parse_docx_ordered(self, file_path: str, doc_id: str, metadata: Dict = None) -> List[Document]:
@@ -187,7 +189,7 @@ class DocumentProcessor:
                         "ext": image_ext
                     }
                 except Exception as e:
-                    print(f"[DOCX] 图片关系提取失败: {e}")
+                    _log.warning("DOCX 图片关系提取失败: {}", e)
 
         # 遍历文档主体元素（保持顺序）
         body = docx_doc.element.body
@@ -259,12 +261,15 @@ class DocumentProcessor:
         )
         docs.append(doc)
 
-        print(f"[DOCX] 解析完成: {len(full_text)} 字符, {len(self.images)} 张图片（按原始顺序）")
+        _log.info("DOCX 解析完成: {} 字符, {} 张图片（按原始顺序）", len(full_text), len(self.images))
         return docs
 
     def split_documents(self, documents: List[Document]) -> List:
         """
         分块文档（保留图片标记完整性）
+
+        策略: 切分前将 [IMG]...[/IMG] 替换为不可分割的占位符，切分后还原。
+        避免 SentenceSplitter 在图片标记中间截断导致信息丢失。
 
         Args:
             documents: 原始文档列表
@@ -272,28 +277,30 @@ class DocumentProcessor:
         Returns:
             分块后的节点列表
         """
+        # 1. 提取所有 [IMG]...[/IMG] 并替换为占位符
+        # img_map 作用域仅限本方法，不跨文档持久化
+        img_map = {}  # token -> original [IMG]...[/IMG]
+        pattern = r'\[IMG\].*?\[/IMG\]'
+        for doc in documents:
+            matches = re.findall(pattern, doc.text)
+            for match in matches:
+                token = f"__IMG_TOK_{len(img_map)}__"
+                img_map[token] = match
+                doc.text = doc.text.replace(match, token, 1)
+
+        # 2. SentenceSplitter 切分（占位符作为原子文本不会被切断）
         splitter = SentenceSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap
         )
-
         nodes = splitter.get_nodes_from_documents(documents)
 
-        # 确保图片标记不被截断
-        for i, node in enumerate(nodes):
-            text = node.text
-            # 检查不完整的开始标记
-            if "[/IMG]" in text and "[IMG]" not in text:
-                # 移除不完整的结束标记
-                text = text.replace("[/IMG]", "")
-                node.text = text
-            # 检查不完整的结束标记
-            elif "[IMG]" in text and "[/IMG]" not in text:
-                # 找到完整的IMG标签并保留，或者移除不完整的
-                start = text.find("[IMG]")
-                node.text = text[:start]
+        # 3. 还原占位符为原始图片标记
+        for node in nodes:
+            for token, original in img_map.items():
+                node.text = node.text.replace(token, original)
 
-        print(f"[DocumentProcessor] 分块完成: {len(documents)} 文档 -> {len(nodes)} 节点")
+        _log.info("分块完成: {} 文档 -> {} 节点", len(documents), len(nodes))
 
         return nodes
 

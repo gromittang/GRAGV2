@@ -36,4 +36,11 @@ export default {
   clearHistory(sessionId) {
     return api.delete(`/query/history/${sessionId}`)
   },
+
+  submitFeedback(data) {
+    return api.post('/query/feedback', data)
+  },
+  getFeedbackStats() {
+    return api.get('/query/feedback/stats')
+  },
 }

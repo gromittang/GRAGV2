@@ -45,3 +45,17 @@ sessions/
 
 # 参考文件（不提交）
 参考/
+
+# Eval 报告和用例（含业务信息，不入库）
+backend/eval/nl2sql/results/
+backend/eval/nl2sql/datasets/golden_sql.json
+backend/eval/nl2sql/datasets/data_dict.json
+backend/eval/nl2sql/datasets/seed_queries.json
+
+# 嵌入模型（本地文件，较大）
+backend/models/
+
+# Code Memory
+code_memory.db-shm
+code_memory.db-wal
+.mcp/

@@ -1,6 +1,6 @@
 """
-PM方案工作室API
-支持多阶段方案设计，SSE流式对话
+PM方案工作室API（LangGraph 重构）
+核心对话/确认/回退端点使用 LangGraph 图编排
 """
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -11,58 +11,29 @@ import json
 import uuid
 import time
 
+from langgraph.types import Command
+
+from app.core.logging import get_logger
 from app.models.document import get_session
 from app.models.pm_solution import PMSession, PMStage, PMChat
-from app.services.pm_solution_service import PMSolutionService, log_timing
+from app.agents.graph_pm import (
+    get_pm_graph, STAGE_TEMPLATES, STAGE_ORDER,
+)
+from app.services.pm_solution_service import (
+    log_timing,
+    sync_state_to_db,
+    load_state_from_db,
+)
+
+_log = get_logger("api.pm")
 
 router = APIRouter()
 
 
-# 阶段模板配置
-STAGE_TEMPLATES = {
-    "problem": {
-        "name": "问题定义",
-        "description": "明确问题背景、目标、约束",
-        "order": 0,
-        "output_schema": {
-            "summary": "问题摘要",
-            "background": "背景信息",
-            "goals": ["目标列表"],
-            "constraints": ["约束列表"],
-            "stakeholders": ["利益相关者"]
-        }
-    },
-    "analysis": {
-        "name": "方案分析",
-        "description": "分析多个可行方案",
-        "order": 1,
-        "output_schema": {
-            "options": [{"name": "", "approach": "", "pros": "", "cons": "", "score": 0}],
-            "recommendation": "推荐方案"
-        }
-    },
-    "detail": {
-        "name": "方案细化",
-        "description": "细化选定方案的功能设计",
-        "order": 2,
-        "output_schema": {
-            "features": [{"name": "", "description": "", "priority": ""}],
-            "user_stories": ["用户故事"],
-            "technical_requirements": ["技术需求"]
-        }
-    },
-    "prd": {
-        "name": "PRD生成",
-        "description": "生成完整产品需求文档",
-        "order": 3,
-        "output_schema": {
-            "prd_content": "完整PRD文档"
-        }
-    }
-}
-
-
+# ============================================================
 # Request/Response Models
+# ============================================================
+
 class SessionCreateRequest(BaseModel):
     problem: str = Field(..., min_length=1, description="问题描述")
     title: Optional[str] = Field(None, max_length=256, description="会话标题")
@@ -75,18 +46,36 @@ class SessionUpdateRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     user_input: str = Field(..., min_length=1, description="用户输入")
-    current_phase: Optional[int] = Field(None, ge=0, le=3, description="用户当前所在的阶段(0-3)，用于确定生成下一阶段内容")
+    current_phase: Optional[int] = Field(None, ge=0, le=3, description="用户当前所在的阶段(0-3)")
+
+
+class ConfirmRequest(BaseModel):
+    user_input: Optional[str] = Field(None, description="确认前用户在输入框的未发送内容")
 
 
 class RollbackRequest(BaseModel):
     target_phase: int = Field(..., ge=0, le=3, description="目标阶段(0-3)")
 
 
+class StageSwitchRequest(BaseModel):
+    current_stage: int = Field(..., ge=0, le=3, description="切换到的阶段(0-3)")
+
+
+class PMFeedbackRequest(BaseModel):
+    session_id: str
+    stage: str = Field(..., description="problem|analysis|detail|prd")
+    rating: int = Field(ge=1, le=5, description="1-5 星评分")
+    satisfied: bool = True
+    modify_count: int = 1
+    stage_output_summary: Optional[str] = None
+    comment: Optional[str] = None
+
+
 class SessionResponse(BaseModel):
     id: str
     title: str
     problem: str
-    knowledge_id: Optional[str]  # None表示不限定知识库
+    knowledge_id: Optional[str]
     document_id: Optional[str]
     current_stage: int
     stage_status: str
@@ -108,27 +97,24 @@ class StageOutputResponse(BaseModel):
     output_summary: str
 
 
+# ============================================================
+# Session CRUD (largely unchanged)
+# ============================================================
+
 @router.post("/sessions", response_model=SessionResponse)
 async def create_session(request: SessionCreateRequest):
     """创建新方案会话"""
     session = get_session()
     try:
-        # 知识库选择逻辑：
-        # - 明确指定knowledge_id: 使用指定的知识库
-        # - 空字符串"": 不限定知识库（检索全部），设为null
-        # - None: 默认使用PM方案知识库
         if request.knowledge_id == "":
-            # 不限定知识库，检索全部
             knowledge_id = None
         elif request.knowledge_id:
             knowledge_id = request.knowledge_id
         else:
-            # 默认使用PM方案知识库
             from app.models.document import get_or_create_knowledge
             kb = get_or_create_knowledge(session, "PM方案知识库")
             knowledge_id = kb.id
 
-        # 创建会话
         pm_session = PMSession(
             title=request.title or f"方案分析-{datetime.now().strftime('%Y%m%d')}",
             knowledge_id=knowledge_id,
@@ -139,7 +125,6 @@ async def create_session(request: SessionCreateRequest):
         session.add(pm_session)
         session.flush()
 
-        # 创建初始阶段
         initial_stage = PMStage(
             session_id=pm_session.id,
             stage_type="problem",
@@ -233,7 +218,6 @@ async def get_session_chats(session_id: str):
 
         result_list = []
         for chat in chats:
-            # 获取stage_type
             stage_type = None
             if chat.stage_id:
                 stage = session.query(PMStage).filter(PMStage.id == chat.stage_id).first()
@@ -282,17 +266,52 @@ async def update_session_title(session_id: str, request: SessionUpdateRequest):
         raise HTTPException(500, f"更新标题失败: {str(e)}")
 
 
+# ============================================================
+# Core Interaction Endpoints (LangGraph powered)
+# ============================================================
+
+def _make_config(session_id: str) -> dict:
+    return {"configurable": {"thread_id": session_id}}
+
+
+def _build_initial_state(session_id: str, knowledge_id: str, title: str,
+                         user_input: str, problem: str) -> dict:
+    """构建首次调用的 initial_state"""
+    return {
+        "session_id": session_id,
+        "knowledge_id": knowledge_id,
+        "session_title": title,
+        "current_stage": "problem",
+        "stage_order": STAGE_ORDER,
+        "user_input": user_input,
+        "user_action": "continue",
+        "stage_outputs": {},
+        "stage_chats": {},
+        "session_topic": problem or user_input,
+        "is_completed": False,
+    }
+
+
+async def _sse_stream(graph, input_data, config: dict):
+    """将 graph.astream(stream_mode="custom") 转换为 SSE 事件"""
+    t0 = time.time()
+    chunk_count = 0
+    try:
+        async for chunk in graph.astream(input_data, config, stream_mode="custom"):
+            chunk_count += 1
+            if isinstance(chunk, dict):
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+    except Exception as e:
+        log_timing("SSE", f"stream error after {chunk_count} chunks: {e}")
+        yield f"data: {json.dumps({'type': 'error', 'content': str(e)}, ensure_ascii=False)}\n\n"
+    log_timing("SSE", f"stream done, chunks={chunk_count}, elapsed={int((time.time()-t0)*1000)}ms")
+
+
 @router.post("/sessions/{session_id}/chat")
 async def chat_in_stage(session_id: str, request: ChatRequest):
-    """阶段内对话（SSE流式输出）
-
-    current_phase参数说明：
-    - 用户在Px页面点击"继续下一步"时，应传入current_phase=x
-    - API会生成Px+1的内容（如果x<3）
-    - 如果current_phase未传入，则使用session的current_stage
-    """
+    """阶段内对话（SSE流式输出，LangGraph 驱动）"""
     api_start = time.time()
-    log_timing("API", f"收到chat请求 session_id={session_id}, current_phase={request.current_phase}, input_len={len(request.user_input)}")
+    log_timing("API", f"chat session={session_id}, input_len={len(request.user_input)}")
 
     session = get_session()
     try:
@@ -301,62 +320,125 @@ async def chat_in_stage(session_id: str, request: ChatRequest):
             raise HTTPException(404, "会话不存在")
 
         knowledge_id = pm_session.knowledge_id
-
-        # 确定目标阶段：如果用户传入current_phase，则生成下一阶段内容
-        if request.current_phase is not None:
-            # 用户在Px页面点击"继续下一步"，应该生成Px+1的内容
-            # 但如果用户只是输入文字（不是点击继续），则仍用当前阶段
-            if request.user_input in ["继续下一步", "继续", "下一步", "next", "生成下一阶段"]:
-                target_stage = request.current_phase + 1 if request.current_phase < 3 else request.current_phase
-                # 更新session的current_stage
-                if target_stage > pm_session.current_stage:
-                    pm_session.current_stage = target_stage
-                    pm_session.stage_status = "active"
-                    session.commit()
-            else:
-                # 用户输入了实际内容，在当前阶段对话
-                target_stage = request.current_phase
-        else:
-            target_stage = pm_session.current_stage
-
+        title = pm_session.title
+        problem = pm_session.problem
         session.close()
-        log_timing("API", f"查询session完成 knowledge_id={knowledge_id}, target_stage={target_stage}", api_start)
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.close()
+        raise HTTPException(500, f"查询会话失败: {str(e)}")
 
-        # 调用服务层进行流式对话
-        service = PMSolutionService(knowledge_id)
+    graph = get_pm_graph()
+    config = _make_config(session_id)
+
+    # 检查是首次调用还是恢复
+    state_snapshot = graph.get_state(config)
+    is_first_call = (state_snapshot is None or state_snapshot.values is None or
+                     not state_snapshot.values)
+
+    if is_first_call:
+        log_timing("API", "first call — graph.astream with initial_state")
+        initial_state = _build_initial_state(session_id, knowledge_id, title,
+                                             request.user_input, problem)
+        input_data = initial_state
+    else:
+        log_timing("API", "resuming — Command(continue)")
+        input_data = Command(resume={"action": "continue", "input": request.user_input})
+
+    stream_gen = _sse_stream(graph, input_data, config)
+
+    async def stream_generator():
+        async for event in stream_gen:
+            yield event
+        # 流结束后同步 state 到 DB
+        try:
+            final_state = graph.get_state(config)
+            if final_state and final_state.values:
+                sync_state_to_db(session_id, final_state.values)
+        except Exception as e:
+            log_timing("SYNC", f"post-chat sync error: {e}")
+        log_timing("API", f"chat done, total={int((time.time()-api_start)*1000)}ms")
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
+
+
+@router.post("/sessions/{session_id}/confirm")
+async def confirm_stage(session_id: str, request: ConfirmRequest):
+    """确认当前阶段，推进到下一阶段（LangGraph 驱动）"""
+    api_start = time.time()
+    session = get_session()
+    try:
+        pm_session = session.query(PMSession).filter(PMSession.id == session_id).first()
+        if not pm_session:
+            raise HTTPException(404, "会话不存在")
+
+        current_stage_idx = pm_session.current_stage
+        stage_type = _get_stage_type(current_stage_idx)
+        session.close()
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.close()
+        raise HTTPException(500, f"查询会话失败: {str(e)}")
+
+    graph = get_pm_graph()
+    config = _make_config(session_id)
+
+    log_timing("CONFIRM", f"confirming stage={stage_type}")
+
+    # 检查是否存在检查点（服务重启后 MemorySaver 为空）
+    state_snapshot = graph.get_state(config)
+    has_checkpoint = state_snapshot is not None and state_snapshot.values
+
+    # 构建 resume 数据：包含 action 和可选的用户输入
+    resume_data = {"action": "confirm"}
+    if request.user_input:
+        resume_data["input"] = request.user_input
+
+    if not has_checkpoint:
+        # 服务重启后无检查点：从 DB 重建状态，先跑通图到 interrupt 建立检查点
+        log_timing("CONFIRM", "no checkpoint, rebuilding from DB to establish interrupt")
+        state = load_state_from_db(session_id)
+        if not state:
+            raise HTTPException(404, "无法恢复会话状态")
 
         async def stream_generator():
-            stream_start = time.time()
-            log_timing("STREAM", "开始流式生成...")
-            full_response = ""
-            sources = []
-            chunk_count = 0
+            nonlocal config
+            try:
+                yield f"data: {json.dumps({'type': 'status', 'content': '正在确认当前阶段...'}, ensure_ascii=False)}\n\n"
 
-            for chunk in service.chat_stream(
-                session_id=session_id,
-                stage_type=_get_stage_type(target_stage),
-                user_input=request.user_input
-            ):
-                chunk_count += 1
-                if chunk["type"] == "token":
-                    full_response += chunk["content"]
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                elif chunk["type"] == "status":
-                    yield f"data: {json.dumps(chunk)}\n\n"
-                elif chunk["type"] == "done":
-                    sources = chunk.get("sources", [])
-                    yield f"data: {json.dumps(chunk)}\n\n"
+                # First run: establish checkpoint (generate current stage, output discarded)
+                try:
+                    await graph.ainvoke(state, config)
+                except Exception:
+                    pass  # GraphInterrupt expected — checkpoint now exists
 
-            log_timing("STREAM", f"流式生成完成，共{chunk_count}个chunk，response_len={len(full_response)}", stream_start)
+                yield f"data: {json.dumps({'type': 'status', 'content': '正在推进到下一阶段...'}, ensure_ascii=False)}\n\n"
 
-            # 保存对话记录并更新阶段状态为generated
-            save_start = time.time()
-            save_chat_record(session_id, target_stage, request.user_input, full_response, sources)
-            # 更新阶段状态为generated（已生成内容但未确认）
-            update_stage_status(session_id, target_stage, "generated")
-            log_timing("SAVE", f"保存对话记录完成", save_start)
+                # Now resume with confirm action
+                async for event in _sse_stream(
+                    graph,
+                    Command(resume=resume_data),
+                    config
+                ):
+                    yield event
+            except Exception as e:
+                log_timing("SSE", f"confirm+rebuild error: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'content': str(e)}, ensure_ascii=False)}\n\n"
 
-            log_timing("API", f"chat请求完全处理，总耗时={(time.time()-api_start)*1000:.0f}ms", api_start)
+            # Sync state to DB
+            try:
+                final_state = graph.get_state(config)
+                if final_state and final_state.values:
+                    sync_state_to_db(session_id, final_state.values)
+            except Exception as e:
+                log_timing("SYNC", f"post-confirm sync error: {e}")
+            log_timing("CONFIRM", f"confirm done, total={int((time.time()-api_start)*1000)}ms")
 
         return StreamingResponse(
             stream_generator(),
@@ -364,177 +446,179 @@ async def chat_in_stage(session_id: str, request: ChatRequest):
             headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
         )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        session.close()
-        log_timing("API", f"chat请求失败: {str(e)}")
-        raise HTTPException(500, f"对话失败: {str(e)}")
+    # 正常路径：检查点存在，直接恢复确认
+    async def stream_generator():
+        yield f"data: {json.dumps({'type': 'status', 'content': '正在确认阶段，推进到下一阶段...'}, ensure_ascii=False)}\n\n"
+        async for event in _sse_stream(
+            graph,
+            Command(resume=resume_data),
+            config
+        ):
+            yield event
+        # 流结束后同步到 DB
+        try:
+            final_state = graph.get_state(config)
+            if final_state and final_state.values:
+                sync_state_to_db(session_id, final_state.values)
+        except Exception as e:
+            log_timing("SYNC", f"post-confirm sync error: {e}")
+        log_timing("CONFIRM", f"confirm done, total={int((time.time()-api_start)*1000)}ms")
 
-
-@router.post("/sessions/{session_id}/confirm", response_model=StageOutputResponse)
-async def confirm_stage(session_id: str):
-    """确认当前阶段，生成结构化输出并推进"""
-    session = get_session()
-    try:
-        pm_session = session.query(PMSession).filter(PMSession.id == session_id).first()
-        if not pm_session:
-            raise HTTPException(404, "会话不存在")
-
-        current_stage = pm_session.current_stage
-        stage_type = _get_stage_type(current_stage)
-
-        # 获取当前阶段记录
-        stage_record = session.query(PMStage).filter(
-            PMStage.session_id == session_id,
-            PMStage.stage_type == stage_type
-        ).first()
-
-        if not stage_record:
-            raise HTTPException(400, "当前阶段不存在")
-
-        # 获取本阶段所有对话历史
-        chats = session.query(PMChat).filter(
-            PMChat.session_id == session_id,
-            PMChat.stage_id == stage_record.id
-        ).order_by(PMChat.created_at).all()
-
-        chat_history = [{"role": c.role, "content": c.content} for c in chats]
-
-        # 调用LLM生成结构化输出
-        service = PMSolutionService(pm_session.knowledge_id)
-        structured_output = service.generate_structured_output(
-            stage_type=stage_type,
-            chat_history=chat_history,
-            output_schema=STAGE_TEMPLATES[stage_type]["output_schema"]
-        )
-
-        # 更新阶段输出
-        stage_record.status = "confirmed"
-        stage_record.output_data = structured_output
-        stage_record.output_summary = _extract_summary(structured_output)
-        stage_record.confirmed_at = datetime.utcnow()
-
-        # 推进到下一阶段
-        if current_stage < 3:
-            pm_session.current_stage = current_stage + 1
-            pm_session.stage_status = "active"
-
-            # 检查下一阶段记录是否已存在
-            next_stage_type = _get_stage_type(current_stage + 1)
-            next_stage = session.query(PMStage).filter(
-                PMStage.session_id == session_id,
-                PMStage.stage_type == next_stage_type
-            ).first()
-
-            if next_stage:
-                # 已存在，更新状态
-                next_stage.status = "active"
-            else:
-                # 不存在，创建新记录
-                next_stage = PMStage(
-                    session_id=session_id,
-                    stage_type=next_stage_type,
-                    status="active"
-                )
-                session.add(next_stage)
-        else:
-            pm_session.stage_status = "completed"
-
-        session.commit()
-
-        result = StageOutputResponse(
-            stage_type=stage_type,
-            stage_name=STAGE_TEMPLATES[stage_type]["name"],
-            status="confirmed",
-            output_data=structured_output,
-            output_summary=stage_record.output_summary
-        )
-        session.close()
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        session.rollback()
-        session.close()
-        raise HTTPException(500, f"确认阶段失败: {str(e)}")
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
 
 
 @router.post("/sessions/{session_id}/rollback")
 async def rollback_stage(session_id: str, request: RollbackRequest):
-    """回溯到指定阶段"""
+    """回溯到指定阶段（LangGraph 检查点 + DB 双路径）"""
+    target_idx = request.target_phase
+    target_stage = _get_stage_type(target_idx)
+    log_timing("ROLLBACK", f"session={session_id}, target={target_stage}")
+
+    graph = get_pm_graph()
+    config = _make_config(session_id)
+
+    # 先尝试从 MemorySaver 检查点历史回退
+    try:
+        states = [s async for s in graph.aget_state_history(config)]
+        target_state = None
+        for s in states:
+            if s.values and s.values.get("current_stage") == target_stage:
+                target_state = s
+                break
+
+        if target_state is not None and len(target_state.config.get("configurable", {}).get("checkpoint_id", "")) > 0:
+            log_timing("ROLLBACK", "checkpoint found in MemorySaver, replaying")
+            stream_gen = _sse_stream(
+                graph,
+                Command(resume={"action": "continue", "input": "请重新分析"}),
+                target_state.config
+            )
+
+            async def stream_generator():
+                async for event in stream_gen:
+                    yield event
+                try:
+                    final_state = graph.get_state(target_state.config)
+                    if final_state and final_state.values:
+                        sync_state_to_db(session_id, final_state.values)
+                except Exception as e:
+                    log_timing("SYNC", f"post-rollback sync error: {e}")
+
+            return StreamingResponse(
+                stream_generator(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+            )
+    except Exception as e:
+        log_timing("ROLLBACK", f"aget_state_history failed: {e}")
+
+    # 降级路径：从 DB 重建状态
+    log_timing("ROLLBACK", "no checkpoint history — rebuilding from DB")
+    state = load_state_from_db(session_id)
+    if not state:
+        raise HTTPException(404, "无法恢复会话状态")
+
+    # 清除目标阶段之后的阶段输出和聊天
+    target_index = STAGE_ORDER.index(target_stage)
+    staged_outputs = state.get("stage_outputs", {})
+    stage_chats = state.get("stage_chats", {})
+
+    for st in STAGE_ORDER:
+        st_idx = STAGE_ORDER.index(st)
+        if st_idx > target_index:
+            staged_outputs.pop(st, None)
+            stage_chats.pop(st, None)
+
+    state["current_stage"] = target_stage
+    state["user_action"] = "continue"
+    state["user_input"] = "请重新分析"
+    state["stage_outputs"] = staged_outputs
+    state["stage_chats"] = stage_chats
+    state["is_completed"] = False
+
+    # 清理 DB 中的下游阶段
+    db = get_session()
+    try:
+        pm_session = db.query(PMSession).filter(PMSession.id == session_id).first()
+        if pm_session:
+            pm_session.current_stage = target_idx
+            pm_session.stage_status = "active"
+            for st in STAGE_ORDER:
+                st_idx = STAGE_ORDER.index(st)
+                if st_idx > target_idx:
+                    stage_rec = db.query(PMStage).filter(
+                        PMStage.session_id == session_id,
+                        PMStage.stage_type == st
+                    ).first()
+                    if stage_rec:
+                        stage_rec.status = "pending"
+                        stage_rec.output_data = {}
+                        stage_rec.output_summary = ""
+                        stage_rec.confirmed_at = None
+                        db.query(PMChat).filter(PMChat.stage_id == stage_rec.id).delete()
+                    # 目标阶段设为 active
+                    elif st_idx == target_idx:
+                        target_rec = db.query(PMStage).filter(
+                            PMStage.session_id == session_id,
+                            PMStage.stage_type == st
+                        ).first()
+                        if target_rec:
+                            target_rec.status = "active"
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        log_timing("ROLLBACK", f"DB cleanup error: {e}")
+    finally:
+        db.close()
+
+    stream_gen = _sse_stream(
+        graph,
+        state,  # initial state for new execution
+        config
+    )
+
+    async def stream_generator():
+        async for event in stream_gen:
+            yield event
+        try:
+            final_state = graph.get_state(config)
+            if final_state and final_state.values:
+                sync_state_to_db(session_id, final_state.values)
+        except Exception as e:
+            log_timing("SYNC", f"post-rollback sync error: {e}")
+
+    return StreamingResponse(
+        stream_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
+
+
+@router.patch("/sessions/{session_id}/current-stage")
+async def switch_current_stage(session_id: str, request: StageSwitchRequest):
+    """切换当前显示阶段（纯导航，不影响阶段数据）"""
     session = get_session()
     try:
         pm_session = session.query(PMSession).filter(PMSession.id == session_id).first()
         if not pm_session:
             raise HTTPException(404, "会话不存在")
 
-        target_stage = request.target_phase
-
-        # 删除目标阶段之后所有重复的stage记录，只保留每个type一个
-        for stage_order in range(4):
-            stage_type = _get_stage_type(stage_order)
-            all_stages = session.query(PMStage).filter(
-                PMStage.session_id == session_id,
-                PMStage.stage_type == stage_type
-            ).order_by(PMStage.created_at).all()
-
-            if len(all_stages) > 1:
-                # 保留第一个，删除其他重复的
-                keep_stage = all_stages[0]
-                for dup_stage in all_stages[1:]:
-                    session.delete(dup_stage)
-
-                if stage_order > target_stage:
-                    # 目标阶段之后的，重置为pending
-                    keep_stage.status = "pending"
-                    keep_stage.output_data = {}
-                    keep_stage.output_summary = ""
-                    keep_stage.confirmed_at = None
-                elif stage_order == target_stage:
-                    # 目标阶段，设为active
-                    keep_stage.status = "active"
-                elif stage_order < target_stage:
-                    # 目标阶段之前的，保持confirmed
-                    keep_stage.status = "confirmed"
-            elif len(all_stages) == 1:
-                if stage_order > target_stage:
-                    all_stages[0].status = "pending"
-                    all_stages[0].output_data = {}
-                    all_stages[0].output_summary = ""
-                    all_stages[0].confirmed_at = None
-                elif stage_order == target_stage:
-                    all_stages[0].status = "active"
-            else:
-                # 没有记录，创建一个
-                new_stage = PMStage(
-                    session_id=session_id,
-                    stage_type=stage_type,
-                    status="active" if stage_order == target_stage else ("confirmed" if stage_order < target_stage else "pending")
-                )
-                session.add(new_stage)
-
-        # 重置当前阶段
-        pm_session.current_stage = target_stage
-        pm_session.stage_status = "active"
-
+        pm_session.current_stage = request.current_stage
         session.commit()
         session.close()
 
-        target_stage_type = _get_stage_type(target_stage)
-        return {
-            "success": True,
-            "current_stage": target_stage,
-            "message": f"已回溯到阶段 {target_stage}: {STAGE_TEMPLATES[target_stage_type]['name']}"
-        }
+        return {"success": True, "current_stage": request.current_stage}
 
     except HTTPException:
         raise
     except Exception as e:
         session.rollback()
         session.close()
-        raise HTTPException(500, f"回溯失败: {str(e)}")
+        raise HTTPException(500, f"切换阶段失败: {str(e)}")
 
 
 @router.post("/sessions/{session_id}/export")
@@ -546,7 +630,6 @@ async def export_prd(session_id: str):
         if not pm_session:
             raise HTTPException(404, "会话不存在")
 
-        # 获取所有已确认阶段的输出
         stages = session.query(PMStage).filter(
             PMStage.session_id == session_id
         ).order_by(PMStage.created_at).all()
@@ -612,7 +695,40 @@ async def delete_session(session_id: str):
         raise HTTPException(500, f"删除失败: {str(e)}")
 
 
-# Helper functions
+# ============================================================
+# Feedback Endpoints
+# ============================================================
+
+@router.post("/feedback")
+async def submit_feedback(request: PMFeedbackRequest):
+    """提交 PM 阶段评价"""
+    from app.models.pm_feedback import save_pm_feedback
+
+    item = {
+        "session_id": request.session_id,
+        "stage": request.stage,
+        "rating": request.rating,
+        "satisfied": request.satisfied,
+        "modify_count": request.modify_count,
+        "stage_output_summary": request.stage_output_summary or "",
+        "comment": request.comment or "",
+    }
+    feedback_id = await save_pm_feedback(item)
+    return {"success": True, "feedback_id": feedback_id}
+
+
+@router.get("/feedback/stats")
+async def feedback_stats():
+    """获取 PM 反馈统计（按阶段分组）"""
+    from app.models.pm_feedback import get_pm_feedback_stats
+    stats = await get_pm_feedback_stats()
+    return stats
+
+
+# ============================================================
+# Helper Functions
+# ============================================================
+
 def _build_session_response(pm_session: PMSession, db_session) -> SessionResponse:
     """构建会话响应"""
     stages = db_session.query(PMStage).filter(
@@ -646,86 +762,3 @@ def _get_stage_type(stage_order: int) -> str:
     """获取阶段类型"""
     stage_types = ["problem", "analysis", "detail", "prd"]
     return stage_types[stage_order] if 0 <= stage_order < 4 else "problem"
-
-
-def _extract_summary(output_data: dict) -> str:
-    """提取输出摘要"""
-    if "summary" in output_data:
-        return output_data["summary"][:200]
-    elif "recommendation" in output_data:
-        return output_data["recommendation"][:200]
-    elif "prd_content" in output_data:
-        return output_data["prd_content"][:200]
-    else:
-        return json.dumps(output_data, ensure_ascii=False)[:200]
-
-
-def save_chat_record(session_id: str, stage_order: int, user_input: str, response: str, sources: list):
-    """保存对话记录"""
-    session = get_session()
-    try:
-        stage_type = _get_stage_type(stage_order)
-        stage_record = session.query(PMStage).filter(
-            PMStage.session_id == session_id,
-            PMStage.stage_type == stage_type
-        ).first()
-
-        # 如果阶段记录不存在，创建一个
-        if not stage_record:
-            stage_record = PMStage(
-                session_id=session_id,
-                stage_type=stage_type,
-                status="generated"
-            )
-            session.add(stage_record)
-            session.flush()
-
-        # 保存用户消息
-        user_chat = PMChat(
-            session_id=session_id,
-            stage_id=stage_record.id,
-            role="user",
-            content=user_input,
-            sources=[]
-        )
-        session.add(user_chat)
-
-        # 保存助手回复
-        assistant_chat = PMChat(
-            session_id=session_id,
-            stage_id=stage_record.id,
-            role="assistant",
-            content=response,
-            sources=sources
-        )
-        session.add(assistant_chat)
-
-        session.commit()
-        session.close()
-
-    except Exception as e:
-        print(f"[PM] 保存对话记录失败: {e}")
-        session.close()
-
-
-def update_stage_status(session_id: str, stage_order: int, status: str):
-    """更新阶段状态"""
-    session = get_session()
-    try:
-        stage_type = _get_stage_type(stage_order)
-        stage_record = session.query(PMStage).filter(
-            PMStage.session_id == session_id,
-            PMStage.stage_type == stage_type
-        ).first()
-
-        if stage_record:
-            # 只有在当前状态不是confirmed时才更新
-            if stage_record.status != "confirmed":
-                stage_record.status = status
-            session.commit()
-
-        session.close()
-
-    except Exception as e:
-        print(f"[PM] 更新阶段状态失败: {e}")
-        session.close()

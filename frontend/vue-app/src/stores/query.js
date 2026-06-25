@@ -18,6 +18,8 @@ export const useQueryStore = defineStore('query', () => {
   const history = ref([])
   const insight = ref(null)
   const followUps = ref([])
+  const currentHistoryId = ref(null)
+  const feedbackSubmitted = ref(false)
 
   const hasResults = computed(() => results.value.length > 0)
 
@@ -116,6 +118,8 @@ export const useQueryStore = defineStore('query', () => {
       const data = res.data
 
       sessionId.value = data.session_id
+      currentHistoryId.value = data.history_id || null
+      feedbackSubmitted.value = false
       sql.value = data.sql || ''
 
       if (data.results && data.results.length > 0) {
@@ -162,12 +166,36 @@ export const useQueryStore = defineStore('query', () => {
     }
   }
 
+  async function submitFeedback(rating) {
+    if (!currentHistoryId.value) return false
+    try {
+      await queryApi.submitFeedback({
+        history_id: currentHistoryId.value,
+        session_id: sessionId.value,
+        question: question.value,
+        sql: sql.value,
+        tables_used: JSON.stringify([]),
+        table_correct: rating.tableCorrect,
+        field_correct: rating.fieldCorrect,
+        result_correct: rating.resultCorrect,
+        comment: rating.comment || '',
+      })
+      feedbackSubmitted.value = true
+      return true
+    } catch (e) {
+      console.error('Failed to submit feedback:', e)
+      return false
+    }
+  }
+
   return {
     question, sql, results, columns, totalCount, loading,
     schema, connectionOk, previewData, previewTableName, error,
     sessionId, history, insight, followUps,
+    currentHistoryId, feedbackSubmitted,
     hasResults,
     executeQuery, executeSql, fetchSchema, testConnection, previewTable, clear,
     executeQueryWithInsight, loadHistory, handleFollowUp, clearHistoryData,
+    submitFeedback,
   }
 })

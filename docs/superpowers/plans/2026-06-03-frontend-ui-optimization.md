@@ -1204,8 +1204,8 @@ cd backend && python -m uvicorn app.main:app --reload
 
 测试API：
 ```bash
-curl http://localhost:8000/query/schema/search?q=库存
-curl http://localhost:8000/query/schema/table/tstock/fields
+curl http://localhost:8812/query/schema/search?q=库存
+curl http://localhost:8812/query/schema/table/tstock/fields
 ```
 
 - [ ] **步骤 3：最终commit汇总**

@@ -9,7 +9,7 @@ export const useChatStore = defineStore('chat', () => {
   const loading = ref(false)
   const streaming = ref(false)
   const streamingContent = ref('')
-  const tools = ref([])
+  let _messageIndex = 0
 
   const hasMessages = computed(() => messages.value.length > 0)
 
@@ -26,20 +26,25 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const res = await chatApi.sessionDetail(sessionId)
       const history = res.data.history || []
-      // Clean messages: ensure content is plain text, extract sources
-      messages.value = history.map(msg => {
+      _messageIndex = 0
+      messages.value = history.map((msg, idx) => {
         let content = msg.content || ''
-        // If content is a JSON string, try to extract the real answer
         if (typeof content === 'string' && content.trim().startsWith('{')) {
           try {
             const parsed = JSON.parse(content)
             if (parsed.answer) content = parsed.answer
           } catch (e) { /* not JSON, keep as-is */ }
         }
+        if (msg.role === 'assistant') {
+          _messageIndex++
+        }
         return {
           role: msg.role,
           content,
           sources: msg.sources || null,
+          messageIndex: msg.role === 'assistant' ? _messageIndex - 1 : -1,
+          bestRelevanceScore: msg.best_relevance_score || 0,
+          feedbackSubmitted: false,
         }
       })
       currentSessionId.value = sessionId
@@ -65,19 +70,11 @@ export const useChatStore = defineStore('chat', () => {
     currentSessionId.value = null
     streamingContent.value = ''
     streaming.value = false
-  }
-
-  async function fetchTools() {
-    try {
-      const res = await chatApi.agentTools()
-      tools.value = res.data.tools || []
-    } catch (e) {
-      // Tools endpoint may not be available
-    }
+    _messageIndex = 0
   }
 
   async function sendMessage(content) {
-    messages.value.push({ role: 'user', content })
+    messages.value.push({ role: 'user', content, messageIndex: -1, sources: null, bestRelevanceScore: 0, feedbackSubmitted: false })
     loading.value = true
     streaming.value = true
     streamingContent.value = ''
@@ -89,6 +86,7 @@ export const useChatStore = defineStore('chat', () => {
 
       let fullContent = ''
       let sources = null
+      let bestRelevanceScore = 0
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -105,19 +103,23 @@ export const useChatStore = defineStore('chat', () => {
                 streamingContent.value = fullContent
               } else if (data.type === 'done') {
                 streamingContent.value = ''
-                // Keep sources as objects (ChatMessage will extract title)
                 if (data.sources && data.sources.length > 0) {
                   sources = data.sources
                 }
+                bestRelevanceScore = data.best_relevance_score || 0
+                const msgIndex = _messageIndex++
                 messages.value.push({
                   role: 'assistant',
                   content: fullContent,
                   sources,
+                  messageIndex: msgIndex,
+                  bestRelevanceScore,
+                  feedbackSubmitted: false,
                 })
                 fullContent = ''
                 sources = null
+                bestRelevanceScore = 0
               } else if (data.type === 'session_created') {
-                // 收到session_created事件，刷新历史记录
                 currentSessionId.value = data.session_id
                 fetchSessions()
               } else if (data.type === 'status') {
@@ -130,9 +132,12 @@ export const useChatStore = defineStore('chat', () => {
         }
       }
 
-      // If stream ended without done event, save what we have
       if (fullContent) {
-        messages.value.push({ role: 'assistant', content: fullContent })
+        const msgIndex = _messageIndex++
+        messages.value.push({
+          role: 'assistant', content: fullContent,
+          messageIndex: msgIndex, bestRelevanceScore: 0, feedbackSubmitted: false,
+        })
         if (!currentSessionId.value) {
           fetchSessions()
         }
@@ -140,21 +145,29 @@ export const useChatStore = defineStore('chat', () => {
     } catch (e) {
       console.error('Stream error, trying non-stream:', e)
       try {
-        const res = await chatApi.send(content, currentSessionId.value)
+        const res = await chatApi.send(content, currentSessionId.value, true)
         const data = res.data
-        // Keep sources as objects
         const sources = data.sources || null
+        const bestRelevanceScore = data.best_relevance_score || 0
+        const msgIndex = _messageIndex++
         messages.value.push({
           role: 'assistant',
           content: data.answer || '',
           sources,
+          messageIndex: msgIndex,
+          bestRelevanceScore,
+          feedbackSubmitted: false,
         })
         if (data.session_id) {
           currentSessionId.value = data.session_id
           fetchSessions()
         }
       } catch (e2) {
-        messages.value.push({ role: 'assistant', content: '抱歉，请求失败，请稍后重试。' })
+        const msgIndex = _messageIndex++
+        messages.value.push({
+          role: 'assistant', content: '抱歉，请求失败，请稍后重试。',
+          messageIndex: msgIndex, bestRelevanceScore: 0, feedbackSubmitted: false,
+        })
       }
     } finally {
       loading.value = false
@@ -163,9 +176,34 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  async function submitFeedback(messageIndex, feedbackData) {
+    const msg = messages.value.find(m => m.messageIndex === messageIndex)
+    if (!msg) return false
+
+    const data = {
+      session_id: currentSessionId.value,
+      message_index: messageIndex,
+      question: messages.value.find(m => m.role === 'user' && messages.value.indexOf(m) < messages.value.indexOf(msg))?.content || '',
+      answer: msg.content,
+      sources: JSON.stringify(msg.sources || []),
+      best_relevance_score: msg.bestRelevanceScore || 0,
+      ...feedbackData,
+    }
+
+    try {
+      await chatApi.submitFeedback(data)
+      msg.feedbackSubmitted = true
+      return true
+    } catch (e) {
+      console.error('Failed to submit feedback:', e)
+      return false
+    }
+  }
+
   return {
     messages, sessions, currentSessionId, loading, streaming,
-    streamingContent, tools, hasMessages,
-    fetchSessions, loadSession, deleteSession, newChat, sendMessage, fetchTools,
+    streamingContent, hasMessages,
+    fetchSessions, loadSession, deleteSession, newChat, sendMessage,
+    submitFeedback,
   }
 })

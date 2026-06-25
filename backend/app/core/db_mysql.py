@@ -4,12 +4,35 @@ MySQL 连接管理
 """
 import asyncio
 from typing import Dict, List, Optional, Any
+from decimal import Decimal
 import aiomysql
 from contextlib import asynccontextmanager
 
 from app.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+_log = get_logger("core.mysql")
+
+
+from datetime import date, datetime
+
+
+def _serialize_row(row: Dict) -> Dict:
+    """将 MySQL 返回的 Decimal/bytes/datetime 等类型转为 JSON 可序列化类型"""
+    result = {}
+    for k, v in row.items():
+        if v is None:
+            result[k] = None
+        elif isinstance(v, Decimal):
+            result[k] = float(v)
+        elif isinstance(v, bytes):
+            result[k] = v.decode("utf-8", errors="replace")
+        elif isinstance(v, (datetime, date)):
+            result[k] = v.isoformat()
+        else:
+            result[k] = v
+    return result
 
 
 class MySQLManager:
@@ -32,7 +55,7 @@ class MySQLManager:
             maxsize=5,
             autocommit=True
         )
-        print(f"[MySQL] 连接池初始化完成: {_settings.mysql_host}:{_settings.mysql_port}/{_settings.mysql_database}")
+        _log.info("连接池初始化完成: {}:{}/{}", _settings.mysql_host, _settings.mysql_port, _settings.mysql_database)
 
     async def close_pool(self) -> None:
         """关闭连接池"""
@@ -67,10 +90,11 @@ class MySQLManager:
 
                     if sql.strip().lower().startswith("select"):
                         rows = await cursor.fetchall()
+                        serialized = [_serialize_row(r) for r in rows]
                         return {
                             "success": True,
-                            "rows": rows,
-                            "count": len(rows),
+                            "rows": serialized,
+                            "count": len(serialized),
                             "columns": [desc[0] for desc in cursor.description] if cursor.description else []
                         }
                     else:
@@ -92,7 +116,7 @@ class MySQLManager:
                     await cursor.execute("SELECT 1")
                     return True
         except Exception as e:
-            print(f"[MySQL] 连接测试失败: {e}")
+            _log.error("连接测试失败: {}", e)
             return False
 
     async def get_schema_tables(self) -> List[Dict]:
@@ -110,7 +134,7 @@ class MySQLManager:
         return result.get("rows", [])
 
     async def get_schema_columns(self, table_name: str = None) -> List[Dict]:
-        """从tfrmdataprop读取字段信息"""
+        """从tfrmdataprop读取字段信息（含Remark枚举说明）"""
         if table_name:
             sql = """
             SELECT
@@ -119,7 +143,8 @@ class MySQLManager:
                 DataType as data_type,
                 DataWidth as data_length,
                 DataDec as description,
-                DataObjCode as table_name
+                DataObjCode as table_name,
+                Remark as remark
             FROM tfrmdataprop
             WHERE DataObjCode = %s
             ORDER BY FieldIndex
@@ -133,7 +158,8 @@ class MySQLManager:
                 DataType as data_type,
                 DataWidth as data_length,
                 DataDec as description,
-                DataObjCode as table_name
+                DataObjCode as table_name,
+                Remark as remark
             FROM tfrmdataprop
             ORDER BY DataObjCode, FieldIndex
             """
@@ -171,13 +197,15 @@ class MySQLManager:
 
 # 单例和锁
 _mysql_manager: Optional[MySQLManager] = None
-_init_lock = asyncio.Lock()
+_init_lock = None
 
 
 async def get_mysql_manager() -> MySQLManager:
     """获取MySQL管理器（单例）"""
-    global _mysql_manager
+    global _mysql_manager, _init_lock
     if _mysql_manager is None:
+        if _init_lock is None:
+            _init_lock = asyncio.Lock()
         async with _init_lock:
             if _mysql_manager is None:  # 双重检查
                 _mysql_manager = MySQLManager()

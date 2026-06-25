@@ -24,7 +24,7 @@ aiomysql>=0.2.0
 numpy>=1.24.0
 
 # Embedding（固定兼容版本，避免 PreTrainedModel 导入错误）
-transformers==4.44.0
+transformers>=4.44.2
 sentence-transformers==3.0.1
 
 # 文档处理
@@ -34,6 +34,9 @@ pillow>=10.0.0
 
 # 中文
 jieba>=0.42.1
+
+# BM25 关键词检索
+rank-bm25>=0.2.2
 
 # 配置
 pydantic-settings>=2.1.0

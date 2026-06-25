@@ -9,8 +9,10 @@ import jieba
 
 from app.core.settings import get_industry_settings
 from app.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+_log = get_logger("rag.retriever")
 
 
 class HybridRetriever(BaseRetriever):
@@ -117,8 +119,51 @@ def create_retriever(index, knowledge_id: str = None, industry_type: str = None)
             top_k=top_k
         )
     except Exception as e:
-        print(f"[Retriever] BM25 创建失败，使用纯向量检索: {e}")
+        _log.warning("BM25 创建失败，使用纯向量检索: {}", e)
         return vector_retriever
+
+
+class ChromaDirectRetriever(BaseRetriever):
+    """
+    ChromaDB 直接检索器
+    绕过 VectorStoreIndex 直接查询 ChromaDB，避免 llama-index 内部
+    langchain/pydantic v1-v2 版本冲突导致的 RuntimeError。
+    """
+
+    def __init__(self, collection, embed_model, similarity_top_k: int = 10):
+        self._collection = collection
+        self._embed_model = embed_model
+        self._similarity_top_k = similarity_top_k
+        super().__init__()
+
+    def _retrieve(self, query_bundle: QueryBundle) -> List:
+        from llama_index.core.schema import NodeWithScore, TextNode
+
+        query_str = query_bundle.query_str
+        query_embedding = self._embed_model.get_query_embedding(query_str)
+
+        results = self._collection.query(
+            query_embeddings=[query_embedding],
+            n_results=self._similarity_top_k,
+            include=["documents", "metadatas", "distances"]
+        )
+
+        nodes = []
+        ids0 = results.get("ids")
+        if ids0 and ids0[0]:
+            docs0 = results.get("documents", [[]])[0]
+            metas0 = results.get("metadatas", [[]])[0]
+            dists0 = results.get("distances", [[]])[0]
+            for i, doc_id in enumerate(ids0[0]):
+                text = docs0[i] if i < len(docs0) else ""
+                metadata = metas0[i] if i < len(metas0) else {}
+                distance = dists0[i] if i < len(dists0) else 0
+
+                node = TextNode(text=text, id_=doc_id, metadata=metadata or {})
+                score = 1.0 - distance  # cosine distance → similarity
+                nodes.append(NodeWithScore(node=node, score=score))
+
+        return nodes
 
 
 def chinese_keyword_extract(text: str) -> List[str]:

@@ -177,10 +177,11 @@ class SQLValidateTool(BaseTool):
                 "sql": sql
             }, ensure_ascii=False)
 
-        # 强制添加LIMIT（聚合查询除外）
+        # 强制添加LIMIT（聚合查询用更大上限，普通查询100）
         has_aggregation = any(kw in sql_lower for kw in ["group by", "count(", "sum(", "avg(", "max(", "min("])
-        if not has_aggregation and "limit" not in sql_lower:
-            sql = sql.rstrip(";") + " LIMIT 100"
+        if "limit" not in sql_lower:
+            limit_value = "1000" if has_aggregation else "100"
+            sql = sql.rstrip(";") + f" LIMIT {limit_value}"
 
         return json.dumps({
             "valid": True,

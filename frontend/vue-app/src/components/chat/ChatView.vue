@@ -1,7 +1,7 @@
 <template>
-  <div class="flex-1 flex flex-col">
+  <div class="flex-1 flex flex-col min-h-0">
     <!-- Message area -->
-    <div ref="scrollRef" class="flex-1 overflow-y-auto px-6 py-6 space-y-5">
+    <div ref="scrollRef" class="flex-1 overflow-y-auto px-6 py-6 space-y-5 min-h-0">
       <!-- Empty state -->
       <div v-if="!messages.length && !streaming" class="flex items-center justify-center h-full">
         <div class="text-center max-w-sm">
@@ -19,6 +19,8 @@
           :role="msg.role"
           :content="msg.content"
           :sources="msg.sources"
+          :message-index="msg.messageIndex ?? -1"
+          :feedback-submitted="msg.feedbackSubmitted ?? false"
         />
       </template>
 

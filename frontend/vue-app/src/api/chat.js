@@ -1,8 +1,8 @@
 import api from './index'
 
 export default {
-  send(question, sessionId) {
-    return api.post('/chat/', { question, session_id: sessionId })
+  send(question, sessionId, streamFailed = false) {
+    return api.post('/chat/', { question, session_id: sessionId, stream_failed: streamFailed })
   },
   sendStream(question, sessionId) {
     // 使用相对路径，让浏览器自动使用当前页面的协议、主机和端口
@@ -27,20 +27,10 @@ export default {
   deleteSession(sessionId) {
     return api.delete(`/chat/sessions/${sessionId}`)
   },
-  // Agent APIs
-  agentSend(question, sessionId) {
-    return api.post('/agent/', { question, session_id: sessionId })
+  submitFeedback(data) {
+    return api.post('/chat/feedback', data)
   },
-  agentStatus() {
-    return api.get('/agent/status')
-  },
-  agentClearMemory() {
-    return api.post('/agent/clear-memory')
-  },
-  agentHistory() {
-    return api.get('/agent/history')
-  },
-  agentTools() {
-    return api.get('/agent/tools')
+  getFeedbackStats() {
+    return api.get('/chat/feedback/stats')
   },
 }

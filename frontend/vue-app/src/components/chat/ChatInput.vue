@@ -1,5 +1,5 @@
 <template>
-  <div class="border-t border-grid bg-surface px-6 py-4">
+  <div class="border-t border-grid bg-surface px-6 py-4 flex-shrink-0">
     <div class="max-w-3xl mx-auto flex items-end gap-3">
       <textarea
         ref="textareaRef"

@@ -49,9 +49,22 @@ export const pmSolutionApi = {
     return api.get(`${PM_SOLUTION_BASE}/sessions/${sessionId}/chats`)
   },
 
-  // 确认当前阶段，推进到下一阶段
-  confirm(sessionId) {
-    return api.post(`${PM_SOLUTION_BASE}/sessions/${sessionId}/confirm`)
+  // 确认当前阶段，推进到下一阶段（SSE流式，LangGraph 会同步生成下一阶段内容）
+  confirm(sessionId, userInput = null) {
+    const body = {}
+    if (userInput) body.user_input = userInput
+    return fetch(`/api/v1${PM_SOLUTION_BASE}/sessions/${sessionId}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  },
+
+  // 切换当前显示阶段（纯导航，不影响阶段数据）
+  switchStage(sessionId, currentStage) {
+    return api.patch(`${PM_SOLUTION_BASE}/sessions/${sessionId}/current-stage`, {
+      current_stage: currentStage
+    })
   },
 
   // 回溯到指定阶段
@@ -69,7 +82,16 @@ export const pmSolutionApi = {
   // 删除会话
   deleteSession(sessionId) {
     return api.delete(`${PM_SOLUTION_BASE}/sessions/${sessionId}`)
-  }
+  },
+
+  // 提交阶段反馈
+  submitFeedback(data) {
+    return api.post(`${PM_SOLUTION_BASE}/feedback`, data)
+  },
+  // 获取反馈统计
+  getFeedbackStats() {
+    return api.get(`${PM_SOLUTION_BASE}/feedback/stats`)
+  },
 }
 
 export default pmSolutionApi

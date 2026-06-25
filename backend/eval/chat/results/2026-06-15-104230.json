@@ -1,0 +1,171 @@
+{
+  "run_id": "2026-06-15-104230",
+  "timestamp": "2026-06-15T10:42:30.614830",
+  "mode": "dry-run",
+  "summary": {
+    "total": 5,
+    "pass": 2,
+    "fail": 3,
+    "uncertain": 0,
+    "pass_rate": 40.0,
+    "avg_relevance_score": 0.541,
+    "avg_latency_ms": 28586.0
+  },
+  "cases": [
+    {
+      "id": "chat_001",
+      "question": "仓库的拣货流程是怎样的？",
+      "category": "warehouse_ops",
+      "verdict": "fail",
+      "checks": {
+        "source_match": true,
+        "keyword_match": false
+      },
+      "error_type": null,
+      "latency_ms": {
+        "retrieve": 10477,
+        "total": 10481
+      },
+      "best_relevance_score": 0.831043004989624,
+      "sources": [
+        {
+          "document_name": "出库建议操作流程.docx",
+          "title": "",
+          "score": 0.7206680774688721
+        },
+        {
+          "document_name": "商品拣货位调整操作流程.docx",
+          "title": "",
+          "score": 0.7536601424217224
+        }
+      ],
+      "answer": null,
+      "judge": null,
+      "error": null
+    },
+    {
+      "id": "chat_002",
+      "question": "如何进行库存盘点？",
+      "category": "inventory",
+      "verdict": "pass",
+      "checks": {
+        "source_match": true,
+        "keyword_match": true
+      },
+      "error_type": null,
+      "latency_ms": {
+        "retrieve": 28965,
+        "total": 28965
+      },
+      "best_relevance_score": 0.9552052617073059,
+      "sources": [
+        {
+          "document_name": "wms盘点.docx",
+          "title": "",
+          "score": 0.6957383751869202
+        }
+      ],
+      "answer": null,
+      "judge": null,
+      "error": null
+    },
+    {
+      "id": "chat_003",
+      "question": "出库的审批流程是什么？",
+      "category": "outbound",
+      "verdict": "fail",
+      "checks": {
+        "source_match": true,
+        "keyword_match": false
+      },
+      "error_type": null,
+      "latency_ms": {
+        "retrieve": 19350,
+        "total": 19350
+      },
+      "best_relevance_score": 0.03536366671323776,
+      "sources": [
+        {
+          "document_name": "出库建议操作流程.docx",
+          "title": "",
+          "score": 0.6351990699768066
+        },
+        {
+          "document_name": "入库建议操作流程.docx",
+          "title": "",
+          "score": 0.6249218583106995
+        },
+        {
+          "document_name": "数据基础信息维护建议.docx",
+          "title": "",
+          "score": 0.6199914813041687
+        }
+      ],
+      "answer": null,
+      "judge": null,
+      "error": null
+    },
+    {
+      "id": "chat_004",
+      "question": "系统的用户权限怎么设置？",
+      "category": "system_config",
+      "verdict": "pass",
+      "checks": {
+        "source_match": true,
+        "keyword_match": true
+      },
+      "error_type": null,
+      "latency_ms": {
+        "retrieve": 18297,
+        "total": 37646
+      },
+      "best_relevance_score": 0.6048851013183594,
+      "sources": [
+        {
+          "document_name": "WMS系统基础资料、出入库流程简易操作说明.docx",
+          "title": "",
+          "score": 0.6157568693161011
+        }
+      ],
+      "answer": null,
+      "judge": null,
+      "error": null
+    },
+    {
+      "id": "chat_005",
+      "question": "收货验收有哪些注意事项？",
+      "category": "acceptance",
+      "verdict": "fail",
+      "checks": {
+        "source_match": true,
+        "keyword_match": false
+      },
+      "error_type": null,
+      "latency_ms": {
+        "retrieve": 27137,
+        "total": 46486
+      },
+      "best_relevance_score": 0.2769220769405365,
+      "sources": [
+        {
+          "document_name": "WMS系统基础资料、出入库流程简易操作说明.docx",
+          "title": "",
+          "score": 0.6229361295700073
+        },
+        {
+          "document_name": "数据基础信息维护建议.docx",
+          "title": "",
+          "score": 0.6452595591545105
+        },
+        {
+          "document_name": "入库建议操作流程.docx",
+          "title": "",
+          "score": 0.6634531021118164
+        }
+      ],
+      "answer": null,
+      "judge": null,
+      "error": null
+    }
+  ]
+}

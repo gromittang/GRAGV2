@@ -3,15 +3,16 @@ LLM 管理
 支持 DeepSeek、OpenAI、Claude 等多种 LLM
 """
 from langchain_core.language_models import BaseLLM
-from langchain_openai import ChatOpenAI
 from langchain_core.outputs import LLMResult, Generation
 from typing import Optional, Dict, Any, List
 from langchain_core.callbacks.manager import CallbackManagerForLLMRun
 import httpx
 
 from app.config import get_settings
+from app.core.logging import get_logger
 
 _settings = get_settings()
+_log = get_logger("core.llm")
 
 
 class DeepSeekLLM(BaseLLM):
@@ -105,6 +106,7 @@ def get_llm(provider: str = None) -> BaseLLM:
         )
 
     elif prov == "openai":
+        from langchain_openai import ChatOpenAI
         llm = ChatOpenAI(
             api_key=_settings.openai_api_key,
             base_url=_settings.openai_base_url,
@@ -122,7 +124,7 @@ def get_llm(provider: str = None) -> BaseLLM:
         raise ValueError(f"不支持的 LLM provider: {prov}")
 
     _llm_instances[prov] = llm
-    print(f"[LLM] 初始化 {prov} LLM")
+    _log.info("初始化 {} LLM", prov)
     return llm
 
 

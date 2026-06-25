@@ -44,12 +44,12 @@ RUN mkdir -p /app/data/chroma /app/data/uploads /app/data/sessions /app/data/ima
 
 ENV DATA_DIR=/app/data \
     APP_ENV=production \
-    SERVER_PORT=8811 \
+    SERVER_PORT=8812 \
     FRONTEND_DIST_DIR=/app/frontend/vue-app/dist
 
-EXPOSE 8811
+EXPOSE 8812
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
-    CMD curl -f http://localhost:8811/health || exit 1
+    CMD curl -f http://localhost:8812/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8811"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8812"]
