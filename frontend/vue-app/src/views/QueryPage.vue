@@ -53,40 +53,45 @@
 
       <!-- Main query area -->
       <div class="flex-1 overflow-y-auto">
-        <div class="max-w-4xl mx-auto p-8 space-y-5">
-          <!-- Query Input -->
+        <div class="max-w-5xl mx-auto p-8 space-y-5">
+          <!-- Query Input (全宽) -->
           <QueryInput :loading="store.loading" @query="store.executeQueryWithInsight($event)" />
 
-          <!-- Error -->
+          <!-- Error (全宽) -->
           <div v-if="store.error" class="border border-danger/20 bg-danger-soft rounded p-4">
             <p class="text-[13px] text-danger">{{ store.error }}</p>
           </div>
 
-          <!-- SQL Display -->
+          <!-- SQL Display (全宽) -->
           <SqlDisplay :sql="store.sql" />
 
-          <!-- Export button -->
-          <div v-if="store.sql && store.hasResults" class="flex items-center justify-between">
-            <span class="font-mono text-[11px] text-primary/40">
-              {{ store.totalCount ? '共 ' + store.totalCount.toLocaleString() + ' 条结果' : '' }}
-            </span>
-            <ExportButton :sql="store.sql" title="查询结果" />
+          <!-- Bento Grid: 左列(SQL信息+结果表) | 右列(AI洞察) -->
+          <div v-if="store.sql || store.hasResults" class="bento-grid">
+            <!-- 左列: 导出信息 + 结果表 -->
+            <div class="bento-main">
+              <div v-if="store.sql && store.hasResults" class="flex items-center justify-between">
+                <span class="font-mono text-[11px] text-tertiary">
+                  {{ store.totalCount ? '共 ' + store.totalCount.toLocaleString() + ' 条结果' : '' }}
+                </span>
+                <ExportButton :sql="store.sql" title="查询结果" />
+              </div>
+              <ResultTable
+                :columns="store.columns"
+                :results="store.results"
+                :total-count="store.totalCount"
+              />
+            </div>
+
+            <!-- 右列: AI 洞察 -->
+            <div class="bento-side">
+              <InsightCard
+                :insight="store.insight"
+                @followUp="store.handleFollowUp($event)"
+              />
+            </div>
           </div>
 
-          <!-- Results Table -->
-          <ResultTable
-            :columns="store.columns"
-            :results="store.results"
-            :total-count="store.totalCount"
-          />
-
-          <!-- AI分析卡片 -->
-          <InsightCard
-            :insight="store.insight"
-            @followUp="store.handleFollowUp($event)"
-          />
-
-          <!-- 查询评价表单 -->
+          <!-- 查询评价表单 (全宽) -->
           <FeedbackForm />
 
           <!-- Empty state -->
@@ -177,3 +182,32 @@ onMounted(() => {
   store.loadHistory()
 })
 </script>
+
+<style scoped>
+.bento-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+}
+.bento-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bento-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (max-width: 1024px) {
+  .bento-grid { grid-template-columns: 1fr; }
+}
+/* 入场动画 — 首次有数据时触发 */
+.bento-main {
+  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+.bento-side {
+  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation-delay: 120ms;
+}
+</style>

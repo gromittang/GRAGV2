@@ -1,5 +1,5 @@
 <template>
-  <div class="border border-grid bg-surface">
+  <div class="border border-grid bg-surface rounded">
     <div class="h-10 hairline-b flex items-center justify-between px-4">
       <span class="font-mono text-[10px] uppercase text-tertiary tracking-wider">数据库结构</span>
       <span
@@ -37,8 +37,14 @@
               @click="$emit('open-window', table.name || table.table_name)"
               class="w-full h-9 hairline-b flex items-center justify-between px-4 hover:bg-warm-gray transition-colors text-left"
             >
-              <span class="font-mono text-[12px] font-bold text-primary">{{ table.name || table.table_name }}</span>
-              <Icon icon="lucide:external-link" class="text-xs text-primary/30" />
+              <div class="flex items-center gap-2">
+                <span class="text-xs">{{ getTableIcon(table.name || table.table_name) }}</span>
+                <span class="font-mono text-[12px] font-bold text-primary">{{ table.name || table.table_name }}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-[10px] text-tertiary">{{ (table.columns || []).length }} 列</span>
+                <Icon icon="lucide:external-link" class="text-xs text-tertiary" />
+              </div>
             </button>
           </div>
         </div>
@@ -61,6 +67,21 @@ const props = defineProps({
 })
 
 defineEmits(['load-schema', 'preview', 'open-window'])
+
+const TABLE_ICONS = {
+  inbound: '📦', outbound: '🚚', warehouse: '🏭',
+  inventory: '📋', sku: '🏷️', supplier: '👤',
+  order: '📝', stock: '📊', location: '📍',
+  receipt: '🧾', quality: '✅', user: '👤',
+}
+
+function getTableIcon(name) {
+  const key = (name || '').toLowerCase()
+  for (const [k, v] of Object.entries(TABLE_ICONS)) {
+    if (key.includes(k)) return v
+  }
+  return '📁'
+}
 
 const searchQuery = ref('')
 

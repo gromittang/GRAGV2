@@ -1,5 +1,5 @@
 <template>
-  <div v-if="columns.length && results.length" class="border border-grid bg-surface overflow-hidden">
+  <div v-if="columns.length && results.length" class="border border-grid bg-surface rounded shadow-card overflow-hidden">
     <div class="h-8 hairline-b flex items-center justify-between px-4">
       <span class="font-mono text-[10px] uppercase text-primary/40 tracking-wider">
         查询结果 <span class="text-accent-green font-bold ml-1">{{ totalCount ? '共 ' + totalCount.toLocaleString() + ' 条' : '' }}</span>
