@@ -4,9 +4,10 @@
 
 企业级知识库问答系统，支持：
 - RAG 检索增强生成
-- NL2SQL 自然语言数据查询
+- NL2SQL 自然语言数据查询 + MCP Data Copilot 预构建查询
 - PM 方案工作室（多阶段方案设计）
 - 智能编排（Hybrid Router → Planner → Executor 跨模块管线）
+- 查询追踪（LogsPage "查询追踪" Tab，每次查询的三层展开详情）
 
 ## 技术栈
 
@@ -28,11 +29,14 @@ Frontend (Vue3)
     ↓ HTTP/SSE
 FastAPI Backend
     ├── Orchestrator → HybridRouter → Planner → Executor
+    ├── DataQueryGateway (executor链: MCP → Local → QueryAgent)
+    │   ├── McpExecutor → MCP Server (:8922) — 15个预构建WMS Tool
+    │   ├── LocalExecutor → graph_nl2sql — LangGraph NL2SQL
+    │   └── QueryAgentExecutor — 旧版兜底 (@deprecated)
     ├── RAG Service → ChromaDB + LLM
-    ├── Query Agent → MySQL + LLM
     └── PM Service → ChromaDB + LLM
     ↓
-SQLite (元数据) + MySQL (业务)
+SQLite (元数据) + MySQL (业务) + MCP Server (:8922)
 ```
 
 ## 前端路由
