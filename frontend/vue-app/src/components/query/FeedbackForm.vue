@@ -30,7 +30,7 @@
             <span class="text-[12px] text-primary/70">表选择正确？</span>
             <button
               @click="rating.tableCorrect = !rating.tableCorrect"
-              :class="rating.tableCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              :class="rating.tableCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
               class="px-3 py-1 text-[11px] font-mono border transition-colors"
             >{{ rating.tableCorrect ? '是' : '否' }}</button>
           </div>
@@ -38,7 +38,7 @@
             <span class="text-[12px] text-primary/70">字段使用正确？</span>
             <button
               @click="rating.fieldCorrect = !rating.fieldCorrect"
-              :class="rating.fieldCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              :class="rating.fieldCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
               class="px-3 py-1 text-[11px] font-mono border transition-colors"
             >{{ rating.fieldCorrect ? '是' : '否' }}</button>
           </div>
@@ -46,7 +46,7 @@
             <span class="text-[12px] text-primary/70">结果符合预期？</span>
             <button
               @click="rating.resultCorrect = !rating.resultCorrect"
-              :class="rating.resultCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              :class="rating.resultCorrect ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
               class="px-3 py-1 text-[11px] font-mono border transition-colors"
             >{{ rating.resultCorrect ? '是' : '否' }}</button>
           </div>

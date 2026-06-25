@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="h-20 hairline-b flex items-center px-12 sticky top-0 bg-paper z-40">
       <div class="flex items-center gap-4">
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">系统设置</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">系统设置</h1>
       </div>
     </header>
 
@@ -15,7 +15,7 @@
           <div class="h-12 hairline-b flex items-center px-6 bg-warm-gray">
             <div class="flex items-center gap-3">
               <Icon icon="lucide:brain" class="text-accent-orange text-lg" />
-              <span class="font-space text-[14px] font-bold text-primary">LLM 配置</span>
+              <span class="font-display text-[14px] font-bold text-primary">LLM 配置</span>
             </div>
           </div>
           <div class="p-6 space-y-4">
@@ -52,7 +52,7 @@
           <div class="h-12 hairline-b flex items-center px-6 bg-warm-gray">
             <div class="flex items-center gap-3">
               <Icon icon="lucide:database" class="text-accent-green text-lg" />
-              <span class="font-space text-[14px] font-bold text-primary">知识库状态</span>
+              <span class="font-display text-[14px] font-bold text-primary">知识库状态</span>
             </div>
           </div>
           <div class="p-6 space-y-4">
@@ -65,8 +65,8 @@
             </div>
             <div class="flex items-center justify-between">
               <span class="text-[13px] text-primary/70">BM25 索引</span>
-              <span class="flex items-center gap-2 font-mono text-[12px] font-bold" :class="bm25Available ? 'text-accent-green' : 'text-red-500'">
-                <span class="w-2 h-2" :class="bm25Available ? 'bg-accent-green' : 'bg-red-500'"></span>
+              <span class="flex items-center gap-2 font-mono text-[12px] font-bold" :class="bm25Available ? 'text-accent-green' : 'text-danger'">
+                <span class="w-2 h-2" :class="bm25Available ? 'bg-accent-green' : 'bg-danger'"></span>
                 {{ bm25Available ? `已索引 (${bm25Docs} 条)` : '未初始化' }}
               </span>
             </div>
@@ -82,7 +82,7 @@
           <div class="h-12 hairline-b flex items-center px-6 bg-warm-gray">
             <div class="flex items-center gap-3">
               <Icon icon="lucide:server" class="text-teal text-lg" />
-              <span class="font-space text-[14px] font-bold text-primary">MySQL 配置</span>
+              <span class="font-display text-[14px] font-bold text-primary">MySQL 配置</span>
             </div>
           </div>
           <div class="p-6 space-y-4">
@@ -121,7 +121,7 @@
           <div class="h-12 hairline-b flex items-center px-6 bg-warm-gray">
             <div class="flex items-center gap-3">
               <Icon icon="lucide:info" class="text-primary/40 text-lg" />
-              <span class="font-space text-[14px] font-bold text-primary">系统信息</span>
+              <span class="font-display text-[14px] font-bold text-primary">系统信息</span>
             </div>
           </div>
           <div class="p-6 space-y-3">
@@ -141,18 +141,18 @@
         </section>
 
         <!-- Dangerous zone -->
-        <section class="border border-red-200 bg-red-50/30">
-          <div class="h-12 hairline-b flex items-center px-6 bg-red-50/50">
+        <section class="border border-danger/20 bg-danger-soft">
+          <div class="h-12 hairline-b flex items-center px-6 bg-danger-soft">
             <div class="flex items-center gap-3">
-              <Icon icon="lucide:alert-triangle" class="text-red-600 text-lg" />
-              <span class="font-space text-[14px] font-bold text-red-700">危险操作</span>
+              <Icon icon="lucide:alert-triangle" class="text-danger text-lg" />
+              <span class="font-display text-[14px] font-bold text-danger">危险操作</span>
             </div>
           </div>
           <div class="p-6">
-            <p class="text-[12px] text-red-600/70 mb-4">以下操作不可撤销，请谨慎操作。</p>
+            <p class="text-[12px] text-danger/70 mb-4">以下操作不可撤销，请谨慎操作。</p>
             <button
               @click="showClearConfirm = true"
-              class="px-4 h-9 border border-red-300 text-red-600 text-[13px] font-medium hover:bg-red-100 transition-colors"
+              class="px-4 h-9 border border-danger/20 text-danger text-[13px] font-medium hover:bg-danger-soft transition-colors"
             >
               清空向量库
             </button>

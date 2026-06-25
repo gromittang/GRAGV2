@@ -6,7 +6,7 @@
         <router-link v-if="kbId" to="/knowledge" class="text-primary/40 hover:text-accent-orange transition-colors mr-2">
           <Icon icon="lucide:arrow-left" class="text-xl" />
         </router-link>
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">知识库</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">知识库</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
         <span class="font-mono text-[12px] uppercase text-accent-orange tracking-widest font-bold">
           {{ kbId ? kbName : '标准作业程序 (SOP)' }}

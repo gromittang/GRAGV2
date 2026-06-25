@@ -21,7 +21,7 @@
             <Icon icon="lucide:plus" class="text-grid text-xl" />
           </div>
         </div>
-        <h3 class="font-space text-lg font-bold text-primary/40 mb-1">创建新知识库</h3>
+        <h3 class="font-display text-lg font-bold text-primary/40 mb-1">创建新知识库</h3>
         <p class="text-[13px] text-primary/30 leading-relaxed">上传文档并建立新的知识库</p>
       </button>
     </div>

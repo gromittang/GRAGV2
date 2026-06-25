@@ -6,7 +6,7 @@
       class="p-8 text-white"
       :style="{ backgroundColor: card.color }"
     >
-      <div class="font-space text-4xl font-bold mb-1 count-up">
+      <div class="font-display text-4xl font-bold mb-1 count-up">
         {{ card.displayValue }}
       </div>
       <div class="text-sm opacity-90">

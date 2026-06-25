@@ -4,7 +4,7 @@
     <header class="h-20 hairline-b flex items-center justify-between px-12 sticky top-0 bg-paper z-40">
       <div class="flex items-center gap-4">
         <Icon icon="lucide:scroll-text" class="text-accent-orange text-xl" />
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">系统日志</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">系统日志</h1>
       </div>
       <div class="flex items-center gap-3">
         <label class="flex items-center gap-2 text-[13px] text-primary/60 cursor-pointer select-none">
@@ -362,8 +362,8 @@ function pipelineLabel(source) {
 function pipelineBadgeClass(source) {
   switch (source) {
     case 'mcp': return 'bg-emerald-100 text-emerald-700'
-    case 'local': return 'bg-slate-100 text-slate-600'
-    case 'queryagent': return 'bg-red-100 text-red-600'
+    case 'local': return 'bg-warm-gray text-secondary'
+    case 'queryagent': return 'bg-danger-soft text-danger'
     default: return 'bg-warm-gray text-primary/50'
   }
 }

@@ -4,7 +4,7 @@
       <div class="absolute inset-0 bg-sidebar/40 backdrop-blur-[2px]" @click="$emit('close')"></div>
       <div class="relative bg-surface border border-grid w-full max-w-[400px] z-[110]">
         <div class="h-12 hairline-b flex items-center justify-between px-4 bg-warm-gray">
-          <span class="font-space text-[14px] font-bold text-primary">标签管理</span>
+          <span class="font-display text-[14px] font-bold text-primary">标签管理</span>
           <button @click="$emit('close')" class="w-6 h-6 flex items-center justify-center text-primary/40 hover:text-primary">
             <Icon icon="lucide:x" class="text-lg" />
           </button>

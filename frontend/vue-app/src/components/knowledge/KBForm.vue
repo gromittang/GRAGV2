@@ -4,7 +4,7 @@
       <div class="absolute inset-0 bg-sidebar/40 backdrop-blur-[2px]" @click="$emit('close')"></div>
       <div class="relative bg-surface border border-grid w-full max-w-[480px] z-[110]">
         <div class="h-14 hairline-b flex items-center justify-between px-6 bg-warm-gray">
-          <span class="font-space text-[15px] font-bold text-primary">{{ isEdit ? '编辑知识库' : '创建新知识库' }}</span>
+          <span class="font-display text-[15px] font-bold text-primary">{{ isEdit ? '编辑知识库' : '创建新知识库' }}</span>
           <button @click="$emit('close')" class="w-8 h-8 flex items-center justify-center text-primary/40 hover:text-primary">
             <Icon icon="lucide:x" class="text-xl" />
           </button>

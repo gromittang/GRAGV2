@@ -10,7 +10,7 @@
       <button @click="$emit('refresh')" class="px-3 h-[28px] text-[11px] font-medium text-primary/60 border border-grid hover:bg-warm-gray transition-colors">
         重新向量化
       </button>
-      <button @click="$emit('delete')" class="px-3 h-[28px] text-[11px] font-medium text-red-600 border border-red-200 hover:bg-red-50 transition-colors">
+      <button @click="$emit('delete')" class="px-3 h-[28px] text-[11px] font-medium text-danger border border-danger/20 hover:bg-danger-soft transition-colors">
         删除
       </button>
       <button @click="$emit('clear')" class="w-6 h-6 flex items-center justify-center text-primary/30 hover:text-primary ml-1">

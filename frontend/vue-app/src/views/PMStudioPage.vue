@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="h-20 hairline-b flex items-center justify-between px-12 sticky top-0 bg-paper z-40">
       <div class="flex items-center gap-4">
-        <h1 class="font-space text-2xl font-bold text-primary tracking-tight">PM方案工作室</h1>
+        <h1 class="font-display text-2xl font-bold text-primary tracking-tight">PM方案工作室</h1>
         <span class="w-1 h-1 bg-grid/60 rounded-full"></span>
         <span class="font-mono text-[12px] uppercase text-accent-orange tracking-widest font-bold">4-Phase Workflow</span>
       </div>
@@ -55,7 +55,7 @@
         <div v-if="!sessionId" class="flex-1 flex items-center justify-center">
           <div class="text-center max-w-md">
             <Icon icon="lucide:file-text" class="text-6xl text-grid mb-4" />
-            <h2 class="font-space text-xl font-bold text-primary mb-2">开始你的方案设计</h2>
+            <h2 class="font-display text-xl font-bold text-primary mb-2">开始你的方案设计</h2>
             <p class="text-grid text-sm mb-6">上传行业资料后，AI将引导你完成问题定义→方案对比→方案细化→PRD生成的完整流程</p>
 
             <!-- 知识库选择 -->
@@ -109,7 +109,7 @@
                   {{ currentPhaseLabel }}
                 </span>
                 <div class="flex items-center gap-2 mt-1">
-                  <h2 v-if="!editingTitle" class="font-space text-lg font-bold text-primary">
+                  <h2 v-if="!editingTitle" class="font-display text-lg font-bold text-primary">
                     {{ sessionTitle }}
                   </h2>
                   <input
@@ -117,7 +117,7 @@
                     v-model="editedTitle"
                     @blur="saveTitle"
                     @keyup.enter="saveTitle"
-                    class="font-space text-lg font-bold text-primary px-2 py-1 border border-accent-orange rounded focus:outline-none"
+                    class="font-display text-lg font-bold text-primary px-2 py-1 border border-accent-orange rounded focus:outline-none"
                     ref="titleInputRef"
                   />
                   <button

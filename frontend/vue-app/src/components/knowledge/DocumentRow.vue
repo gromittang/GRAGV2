@@ -103,7 +103,7 @@ const statusDotClass = computed(() => {
   const s = props.doc.status || ''
   if (s.startsWith('2') || s === 'ready' || s === 'indexed') return 'bg-accent-green'
   if (s.startsWith('1') || s.startsWith('0')) return 'bg-amber'
-  if (s.startsWith('9')) return 'bg-red-500'
+  if (s.startsWith('9')) return 'bg-danger'
   return 'bg-grid'
 })
 const statusTitle = computed(() => {

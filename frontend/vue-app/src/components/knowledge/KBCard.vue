@@ -10,7 +10,7 @@
           <Icon icon="lucide:folder" class="text-white text-xl" />
         </div>
       </div>
-      <h3 class="font-space text-lg font-bold text-primary mb-1">{{ kb.name || '未命名知识库' }}</h3>
+      <h3 class="font-display text-lg font-bold text-primary mb-1">{{ kb.name || '未命名知识库' }}</h3>
       <p class="text-[13px] text-primary/50 mb-4 leading-relaxed">
         {{ kb.description || 'WMS仓库操作手册与规范文档' }}
       </p>
@@ -50,7 +50,7 @@
         </button>
         <button
           @click.stop.prevent="onDelete"
-          class="w-full px-4 py-3 text-left text-[13px] text-red-600 hover:bg-red-50 flex items-center gap-2"
+          class="w-full px-4 py-3 text-left text-[13px] text-danger hover:bg-danger-soft flex items-center gap-2"
         >
           <Icon icon="lucide:x-circle" class="text-base" />
           删除知识库

@@ -6,8 +6,8 @@
       <div v-if="!messages.length && !streaming" class="flex items-center justify-center h-full">
         <div class="text-center max-w-sm">
           <Icon icon="lucide:message-square" class="text-5xl text-grid mb-5 mx-auto" />
-          <p class="text-[15px] text-slate-600 font-medium mb-2">智能问答</p>
-          <p class="text-[13px] text-slate-500 leading-relaxed">
+          <p class="text-[15px] text-secondary font-medium mb-2">智能问答</p>
+          <p class="text-[13px] text-tertiary leading-relaxed">
             输入问题，系统将自动检索知识库内容
           </p>
         </div>

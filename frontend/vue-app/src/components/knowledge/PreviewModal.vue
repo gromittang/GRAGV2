@@ -7,7 +7,7 @@
         <div class="h-14 hairline-b flex items-center justify-between px-6 bg-warm-gray">
           <div class="flex items-center gap-3">
             <Icon :icon="fileIcon" class="text-accent-orange text-lg" />
-            <span class="font-space text-[15px] font-bold text-primary tracking-tight truncate">{{ doc?.name || doc?.filename }}</span>
+            <span class="font-display text-[15px] font-bold text-primary tracking-tight truncate">{{ doc?.name || doc?.filename }}</span>
           </div>
           <button @click="$emit('close')" class="w-8 h-8 flex items-center justify-center text-primary/40 hover:text-accent-orange transition-colors">
             <Icon icon="lucide:x" class="text-xl" />

@@ -169,3 +169,32 @@ MCP_TIMEOUT=60.0                # 请求超时 (秒)
 - 日志获取: `get_logger("模块名")` — 自动绑定 `trace_id` 到每条日志
 - 查询追踪: `query_history` 表 `trace_json` 列存储结构化追踪数据，`/logs` 页面可查看
 - 所有用户可见文本使用中文
+
+
+## 前端改版工作流入口（Frontend Redesign Workflow Entry）
+
+当任务涉及以下类型时：
+
+* 前端页面改版 / UI 重构 / 视觉升级
+* 设计 Token 梳理
+* 导航 / 布局 / 通用组件重构
+* Query / Chat / Knowledge / PM 等页面的界面升级
+
+除本文件外，必须优先读取以下文档：
+
+1. `docs/engineering/frontend-redesign-playbook.md`
+2. `docs/engineering/page-regression-checklists.md`
+3. 当前激活的前端改版计划（位于 `docs/superpowers/plans/`）
+4. `docs/engineering/receipts/` 下最近一次的 phase receipt（如果存在）
+
+### 前端改版执行原则
+
+1. 不要一次性跑完整个前端改版，必须按 phase 推进。
+2. 每个 phase 完成后，必须在 `docs/engineering/receipts/` 下生成一份 receipt，并停下来等待用户确认，除非用户明确要求连续执行。
+3. 核心页面（如 Query / Chat / Knowledge / PM）视为高风险页面：
+
+   * 实施前要做影响分析
+   * 实施后要参考页面回归清单做检查
+   * 不允许把“UI 改版”与大范围业务逻辑重构混在一起，除非任务明确要求
+4. 如果 review 发现 blocking issues，优先修复后再进入下一 phase。
+5. 如果改动涉及交互逻辑、状态流、请求流，必须在 receipt 中明确说明影响范围、已执行的验证和仍需人工验证的点。

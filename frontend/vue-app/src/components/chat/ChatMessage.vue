@@ -93,7 +93,7 @@
           </button>
           <button
             @click="feedbackRating.helpful = false; feedbackExpanded = true"
-            :class="feedbackExpanded && !feedbackRating.helpful ? 'border-red-300 text-red-500 bg-red-50' : 'border-grid/50 text-primary/40 hover:border-red-300 hover:text-red-400'"
+            :class="feedbackExpanded && !feedbackRating.helpful ? 'border-danger/20 text-danger bg-danger-soft' : 'border-grid/50 text-primary/40 hover:border-danger/20 hover:text-red-400'"
             class="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-mono border transition-colors"
           >
             <Icon icon="lucide:thumbs-down" class="text-xs" />
@@ -106,7 +106,7 @@
             <span class="text-[11px] text-primary/60 font-mono">来源准确？</span>
             <button
               @click="feedbackRating.sourceAccurate = !feedbackRating.sourceAccurate"
-              :class="feedbackRating.sourceAccurate ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              :class="feedbackRating.sourceAccurate ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
               class="px-2 py-0.5 text-[10px] font-mono border transition-colors"
             >{{ feedbackRating.sourceAccurate ? '是' : '否' }}</button>
           </div>
@@ -114,7 +114,7 @@
             <span class="text-[11px] text-primary/60 font-mono">回答完整？</span>
             <button
               @click="feedbackRating.answerComplete = !feedbackRating.answerComplete"
-              :class="feedbackRating.answerComplete ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+              :class="feedbackRating.answerComplete ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
               class="px-2 py-0.5 text-[10px] font-mono border transition-colors"
             >{{ feedbackRating.answerComplete ? '是' : '否' }}</button>
           </div>

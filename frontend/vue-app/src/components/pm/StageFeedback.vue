@@ -31,7 +31,7 @@
         <span class="text-[11px] text-primary/60 font-mono">是否满足预期？</span>
         <button
           @click="satisfied = !satisfied"
-          :class="satisfied ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-red-50 text-red-500 border-red-200'"
+          :class="satisfied ? 'bg-accent-green/10 text-accent-green border-accent-green/30' : 'bg-danger-soft text-danger border-danger/20'"
           class="px-3 py-1 text-[11px] font-mono border transition-colors"
         >{{ satisfied ? '是' : '否' }}</button>
       </div>
