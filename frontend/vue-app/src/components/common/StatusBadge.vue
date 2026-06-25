@@ -43,7 +43,7 @@ function stageColor(stage) {
   switch (stage.code) {
     case '2': return 'bg-accent-green'
     case '1': return 'bg-amber'
-    case '9': return 'bg-red-500'
+    case '9': return 'bg-danger'
     default: return 'bg-grid'
   }
 }
