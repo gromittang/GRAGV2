@@ -193,21 +193,16 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 .bento-side {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation-delay: 120ms;
 }
 @media (max-width: 1024px) {
   .bento-grid { grid-template-columns: 1fr; }
-}
-/* 入场动画 — 首次有数据时触发 */
-.bento-main {
-  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
-}
-.bento-side {
-  animation: fade-up 600ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
-  animation-delay: 120ms;
 }
 </style>

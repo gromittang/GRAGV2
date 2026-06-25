@@ -26,7 +26,8 @@
             <td
               v-for="col in columns"
               :key="col"
-              class="px-4 py-2.5 text-[13px] text-primary/80 whitespace-nowrap"
+              class="px-4 py-2.5 text-[13px] whitespace-nowrap"
+              :class="isNumericCell(row[col]) ? 'font-mono text-right font-medium' : 'text-primary/80'"
             >{{ formatCell(row[col]) }}</td>
           </tr>
         </tbody>
@@ -46,5 +47,13 @@ function formatCell(val) {
   if (val === null || val === undefined) return '—'
   if (typeof val === 'number') return val.toLocaleString()
   return String(val)
+}
+
+function isNumericCell(val) {
+  if (val === null || val === undefined) return false
+  if (typeof val === 'number') return true
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) return false
+  const parsed = parseFloat(String(val).replace(/,/g, ''))
+  return !isNaN(parsed) && isFinite(parsed)
 }
 </script>
