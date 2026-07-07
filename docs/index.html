@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WMSRAG V2 - 仓库智能知识库 + Data Copilot</title>
+  <title>WMSRAG V2 — 仓库智能知识库 + MCP Data Copilot</title>
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="assets/screenshots/favicon.ico" type="image/x-icon">
 </head>
@@ -23,9 +23,9 @@
           </div>
         </div>
         <a href="#features" class="nav-link">核心能力</a>
+        <a href="#highlights" class="nav-link">技术亮点</a>
         <a href="#data-copilot" class="nav-link">Data Copilot</a>
         <a href="#quickstart" class="nav-link">快速开始</a>
-        <a href="#api" class="nav-link">API</a>
         <a href="#architecture" class="nav-link">架构</a>
       </div>
     </div>
@@ -34,11 +34,11 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">AI-Powered Knowledge Base + Data Copilot</div>
+      <div class="hero-badge">MCP Data Copilot + RAG + NL2SQL — 三位一体的仓库 AI 工作台</div>
       <h1 class="hero-title">
         <span class="hero-title-accent">仓库智能知识库 V2</span>
       </h1>
-      <p class="hero-subtitle">RAG 知识库问答 + NL2SQL 自然语言数据查询 + PM 方案工作室，三位一体的仓库 AI 工作台</p>
+      <p class="hero-subtitle">MCP 预构建 Tool 查询 + NL2SQL 自然语言查数据 + RAG 知识库问答 + PM 方案工作室</p>
       <div class="hero-highlight">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
@@ -46,7 +46,7 @@
           <line x1="6" y1="6" x2="6.01" y2="6"></line>
           <line x1="6" y1="18" x2="6.01" y2="18"></line>
         </svg>
-        Docker 一键启动 | LangGraph 编排 | 混合检索 | 图片理解 | Markdown 渲染
+        MCP 2024-11-05 协议 | 15 个预构建 WMS Tool | 三级回退链 + CircuitBreaker | 行业自适应分块 | 全链路可观测
       </div>
       <div class="hero-buttons">
         <a href="#quickstart" class="btn btn-primary">
@@ -70,20 +70,24 @@
   <section class="stats">
     <div class="stats-grid">
       <div class="stat-item">
+        <div class="stat-number">15</div>
+        <div class="stat-label">MCP 预构建 Tool</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-number">3</div>
+        <div class="stat-label">级查询回退链</div>
+      </div>
+      <div class="stat-item">
         <div class="stat-number">514</div>
         <div class="stat-label">业务数据表</div>
       </div>
       <div class="stat-item">
         <div class="stat-number">7904</div>
-        <div class="stat-label">Schema字段索引</div>
+        <div class="stat-label">Schema 字段索引</div>
       </div>
       <div class="stat-item">
-        <div class="stat-number">10+</div>
-        <div class="stat-label">业务域覆盖</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">12</div>
-        <div class="stat-label">API 端点</div>
+        <div class="stat-number">5</div>
+        <div class="stat-label">行业分块预设</div>
       </div>
     </div>
   </section>
@@ -92,34 +96,35 @@
   <section class="features" id="features">
     <div class="container">
       <h2 class="section-title">核心能力</h2>
-      <p class="section-subtitle">三大模块协同：知识库 RAG 问答 + Data Copilot 数据查询 + PM 方案工作室，覆盖仓库日常工作的完整 AI 辅助链</p>
+      <p class="section-subtitle">MCP Data Copilot + RAG 问答 + NL2SQL + PM 方案工作室，覆盖仓库日常工作的完整 AI 辅助链</p>
       <div class="features-grid">
-        <!-- Feature 1: Data Copilot -->
+
+        <!-- Feature 1: MCP Data Copilot -->
         <div class="feature-card feature-highlight">
-          <div class="feature-icon">🤖</div>
-          <h3 class="feature-title">Data Copilot</h3>
-          <p class="feature-desc">企业级 NL2SQL 数据智能助手。用户用自然语言提问，系统自动完成 Schema 语义检索 → SQL 生成 → 安全校验 → 执行 → AI 洞察分析的完整流水线。<br><br><strong>语义层：</strong>覆盖库存、出库、拣货、配送、收货、商品、仓位、用户等 10+ 业务域，514 张表 / 7904 字段向量化索引。</p>
+          <div class="feature-icon">🔌</div>
+          <h3 class="feature-title">MCP Data Copilot</h3>
+          <p class="feature-desc"><strong>Phase 2 核心升级：</strong>基于 MCP 2024-11-05 Streamable HTTP 协议的预构建查询。15 个 Tool 覆盖库存/商品/入库/出库/分析五大领域，封装预编译 SQL + 安全校验 + 参数验证。<br><br><strong>三级回退链：</strong>MCP Tool → Local NL2SQL → QueryAgent，CircuitBreaker 自动熔断故障服务，业务错误不影响熔断计数。</p>
         </div>
 
-        <!-- Feature 2: 智能问答 -->
+        <!-- Feature 2: Gateway 统一查询 -->
+        <div class="feature-card">
+          <div class="feature-icon">🚦</div>
+          <h3 class="feature-title">统一查询网关</h3>
+          <p class="feature-desc"><strong>DataQueryGateway</strong> 是所有数据查询的唯一入口。MCP eligibility 纯规则判断（零 LLM 开销，含 Unicode 安全的正则实体识别），失败时自动回退到下一级 Executor。<br><br><strong>查询追踪：</strong>每次查询生成三层 Trace JSON（leader/ops/debug），LogsPage 可视化展开。</p>
+        </div>
+
+        <!-- Feature 3: 智能问答 -->
         <div class="feature-card">
           <div class="feature-icon">🧠</div>
-          <h3 class="feature-title">智能问答</h3>
-          <p class="feature-desc">基于 RAG 的操作手册问答。Query 改写 + BM25 关键词检索 + 语义向量检索双路并行，RRF 融合 + bge-reranker 精排，结合 DeepSeek LLM 流式生成答案。<br><br><strong>图片理解：</strong>文档中的图片自动提取并展示，AI 可结合图片内容回答。</p>
+          <h3 class="feature-title">智能问答 (RAG)</h3>
+          <p class="feature-desc">LangGraph 编排的多阶段检索管线：Query 改写 → BM25 + 向量双路并行检索 → RRF 融合排序 → Cross-Encoder 重排序 → DeepSeek LLM 流式生成。<br><br><strong>图片理解：</strong>文档图片自动提取并展示，AI 可结合图片内容回答。</p>
         </div>
 
-        <!-- Feature 3: 文档管理 -->
+        <!-- Feature 4: 文档管理 + 行业分块 -->
         <div class="feature-card">
           <div class="feature-icon">📚</div>
-          <h3 class="feature-title">文档管理</h3>
-          <p class="feature-desc">支持 Word / PDF / TXT 文档上传和自动解析。图片自动提取并支持预览，文档按知识库分类隔离管理。支持批量操作、删除、重新索引。<br><br><strong>中文优化：</strong>jieba 分词 + 2-4 字 n-gram，精准匹配仓库专业术语。</p>
-        </div>
-
-        <!-- Feature 4: 混合检索 -->
-        <div class="feature-card">
-          <div class="feature-icon">⚡</div>
-          <h3 class="feature-title">混合检索</h3>
-          <p class="feature-desc">LangGraph 编排的多阶段检索管线：Query 改写 → BM25 + 向量双路并行检索 → RRF 融合排序 → Cross-Encoder 重排序 → 相关性阈值过滤。<br><br><strong>知识库隔离：</strong>每个知识库独立 ChromaDB 集合，互不干扰。</p>
+          <h3 class="feature-title">文档管理 + 智能分块</h3>
+          <p class="feature-desc">支持 Word / PDF / TXT 上传解析，图片自动提取保留原始顺序。<br><br><strong>行业自适应分块：</strong>5 档行业预设（通用/WMS/医疗/法律/金融），chunk_size 300~1000 + chunk_overlap 50~200 按行业自动切换。IMG token 占位符法保护图片标记不被切断。</p>
         </div>
 
         <!-- Feature 5: PM方案工作室 -->
@@ -129,13 +134,195 @@
           <p class="feature-desc">四阶段结构化方案设计：问题定义 → 方案分析 → 方案细化 → PRD 生成。每个阶段可独立确认、回溯、重新生成。<br><br><strong>时间轴导航：</strong>顶部 TimelineStepper 替代传统步骤条，直观展示阶段进度与状态。</p>
         </div>
 
-        <!-- Feature 6: Schema 浏览器 -->
+        <!-- Feature 6: 全链路可观测 -->
         <div class="feature-card">
-          <div class="feature-icon">🔍</div>
-          <h3 class="feature-title">Schema 浏览器</h3>
-          <p class="feature-desc">可视化数据库表结构浏览器。支持关键词实时搜索 514 张表，点击表名弹出悬浮窗查看完整字段详情（类型、宽度、描述）。最多同时打开 5 个悬浮窗，可自由拖拽和调整大小。</p>
+          <div class="feature-icon">🔭</div>
+          <h3 class="feature-title">全链路可观测性</h3>
+          <p class="feature-desc"><strong>两层零外部依赖：</strong>Loguru 结构化日志（按日轮转 JSON lines）+ 本地 Trace/Span 系统（异步批量写入 JSONL）。LangChain Callback 自动捕获每个 Graph 节点的 Span。<br><br><strong>Token 用量全量捕获：</strong>6 个 LLM 调用点全量记录 token usage。</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Highlights Section — NEW -->
+  <section class="data-copilot" id="highlights" style="background: var(--bg-secondary);">
+    <div class="container">
+      <h2 class="section-title">技术亮点</h2>
+      <p class="section-subtitle">区别于通用 RAG 方案的系统级设计与工程实践</p>
+
+      <div class="copilot-domains" style="margin-bottom: 32px;">
+        <h3 class="domains-title">🏗️ 架构特色</h3>
+        <div class="domains-grid">
+          <span class="domain-badge">MCP 2024-11-05 协议</span>
+          <span class="domain-badge">三级 Executor 链</span>
+          <span class="domain-badge">CircuitBreaker 熔断</span>
+          <span class="domain-badge">Contract-first DI</span>
+          <span class="domain-badge">行业自适应分块</span>
+          <span class="domain-badge">IMG 占位符保护</span>
+          <span class="domain-badge">Schema Embedding</span>
+          <span class="domain-badge">字段白名单模式</span>
+          <span class="domain-badge">RRF 融合 + Reranker</span>
+          <span class="domain-badge">全链路降级</span>
+          <span class="domain-badge">本地 Trace 系统</span>
+          <span class="domain-badge">查询三层追踪</span>
         </div>
       </div>
+
+      <!-- Highlight 1: MCP + Gateway -->
+      <div class="copilot-example" style="margin-bottom: 24px;">
+        <div class="example-header">🔌 MCP Data Copilot — 预构建 Tool 替代 LLM 自由生成 SQL</div>
+        <div class="example-content">
+          <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;">
+            传统 NL2SQL 依赖 LLM 自由生成 SQL，存在准确率不稳定、prompt 维护成本高、复杂查询不可控等问题。
+            <strong style="color:var(--text-primary);">本系统引入 MCP Data Copilot Server（独立部署 :8922），提供 15 个只读预构建 Tool</strong>，
+            每个 Tool 封装预编译 SQL + 安全校验 + 参数验证，从根本上消除了 LLM 生成 SQL 的质量波动。
+          </p>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:12px;">
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">📦 Inventory</div>
+              <div style="font-size:13px;color:var(--accent-cyan);">3 Tools</div>
+              <div style="font-size:11px;color:var(--text-secondary);">库存查询/批次/流水</div>
+            </div>
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">📋 Product</div>
+              <div style="font-size:13px;color:var(--accent-cyan);">3 Tools</div>
+              <div style="font-size:11px;color:var(--text-secondary);">商品/PLU/条码</div>
+            </div>
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">📥 Inbound</div>
+              <div style="font-size:13px;color:var(--accent-cyan);">3 Tools</div>
+              <div style="font-size:11px;color:var(--text-secondary);">入库/收货/验收</div>
+            </div>
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">🚚 Outbound</div>
+              <div style="font-size:13px;color:var(--accent-cyan);">3 Tools</div>
+              <div style="font-size:11px;color:var(--text-secondary);">出库/发货/拣货</div>
+            </div>
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:12px;text-align:center;">
+              <div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">📊 Analytics</div>
+              <div style="font-size:13px;color:var(--accent-cyan);">3 Tools</div>
+              <div style="font-size:11px;color:var(--text-secondary);">汇总/预警/慢周转</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Highlight 2: Gateway fallback chain -->
+      <div class="copilot-example" style="margin-bottom: 24px;">
+        <div class="example-header">🚦 DataQueryGateway — 三级回退链 + CircuitBreaker 熔断</div>
+        <div class="example-content">
+          <div class="arch-flow" style="justify-content:flex-start;gap:12px;flex-wrap:wrap;">
+            <div class="arch-node" style="border-color:var(--accent-cyan);min-width:140px;">
+              <strong>🔌 McpExecutor</strong><br>
+              <span style="font-size:12px;color:var(--text-secondary);">priority=0</span><br>
+              <span style="font-size:11px;color:var(--accent-cyan);">15 预构建 Tool</span>
+            </div>
+            <span class="arch-arrow">失败→</span>
+            <div class="arch-node" style="border-color:var(--accent-light);min-width:140px;">
+              <strong>📝 LocalExecutor</strong><br>
+              <span style="font-size:12px;color:var(--text-secondary);">priority=1</span><br>
+              <span style="font-size:11px;color:var(--accent-light);">LangGraph NL2SQL</span>
+            </div>
+            <span class="arch-arrow">失败→</span>
+            <div class="arch-node" style="border-color:var(--text-secondary);min-width:140px;">
+              <strong>📦 QueryAgent</strong><br>
+              <span style="font-size:12px;color:var(--text-secondary);">priority=2</span><br>
+              <span style="font-size:11px;color:var(--text-secondary);">旧版兜底</span>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6;">
+            <strong style="color:var(--text-primary);">CircuitBreaker 区分故障类型：</strong>仅服务级故障（连接失败/超时/认证错误）计入断路器计数，业务错误（Tool 选择失败/参数错误）不计入——它们反映查询本身的问题而非服务健康。
+            <strong style="color:var(--accent-orange);">保守回退策略：</strong>未知错误默认允许回退，避免因错误分类遗漏导致查询完全失败。
+          </p>
+        </div>
+      </div>
+
+      <!-- Highlight 3: Chunk strategy -->
+      <div class="copilot-example" style="margin-bottom: 24px;">
+        <div class="example-header">✂️ 行业自适应分块 — 5 档预设 + IMG 标记保护</div>
+        <div class="example-content">
+          <div class="api-table" style="margin-bottom:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>行业</th>
+                  <th>chunk_size</th>
+                  <th>chunk_overlap</th>
+                  <th>top_k</th>
+                  <th>BM25</th>
+                  <th>设计理由</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>general</td>
+                  <td>500</td><td>100</td><td>5</td><td>✅</td>
+                  <td style="font-size:12px;">通用平衡</td>
+                </tr>
+                <tr>
+                  <td><strong>wms</strong></td>
+                  <td><strong>800</strong></td><td>150</td><td>8</td><td>✅</td>
+                  <td style="font-size:12px;">SOP 流程长，需大窗口</td>
+                </tr>
+                <tr>
+                  <td>medical</td>
+                  <td>300</td><td>50</td><td>10</td><td>✅</td>
+                  <td style="font-size:12px;">文档碎片化，小块精检</td>
+                </tr>
+                <tr>
+                  <td>legal</td>
+                  <td>1000</td><td>200</td><td>5</td><td>❌</td>
+                  <td style="font-size:12px;">条款长，纯向量检索</td>
+                </tr>
+                <tr>
+                  <td>finance</td>
+                  <td>600</td><td>100</td><td>6</td><td>✅</td>
+                  <td style="font-size:12px;">介于通用和 WMS 之间</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;">
+            <strong style="color:var(--accent-cyan);">IMG 占位符保护法：</strong>
+            分块前 <code style="color:var(--accent-cyan);">[IMG]...[/IMG]</code> → <code style="color:var(--accent-cyan);">__IMG_TOK_N__</code> → SentenceSplitter 切分 → 分块后还原。
+            占位符作为原子文本不会被切断，保证图片标记始终完整保留在某个 chunk 中。
+            <strong style="color:var(--text-primary);">chunk_overlap ≈ chunk_size × 15~20%，</strong>小块用小重叠避免冗余，大块用大重叠补偿信息密度。
+          </p>
+        </div>
+      </div>
+
+      <!-- Highlight 4: Tracing + Observability -->
+      <div class="copilot-example">
+        <div class="example-header">🔭 全链路可观测 — 两层零外部依赖 + 查询三层追踪</div>
+        <div class="example-content">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:16px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px;">📊 Layer 1: 结构化日志</div>
+              <ul style="font-size:12px;color:var(--text-secondary);line-height:2;padding-left:16px;">
+                <li>Loguru 控制台彩色 + JSON lines 文件</li>
+                <li>按日轮转，普通日志 30 天 / Error 90 天</li>
+                <li>ContextVar 绑定 trace_id 到每条日志</li>
+              </ul>
+            </div>
+            <div style="background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:8px;padding:16px;">
+              <div style="font-size:14px;font-weight:600;margin-bottom:8px;">🔎 Layer 2: Trace/Span</div>
+              <ul style="font-size:12px;color:var(--text-secondary);line-height:2;padding-left:16px;">
+                <li>异步批量写入 JSONL，每批 10 条或 1 秒刷新</li>
+                <li>LangChain Callback 自动捕获 Graph 节点 Span</li>
+                <li>支持 sync + async 双模式 TraceContext</li>
+              </ul>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:16px;line-height:1.6;">
+            <strong style="color:var(--accent-orange);">查询追踪三层视图：</strong>
+            每次查询生成结构化 trace_json → 存储在 query_history 表 → LogsPage "查询追踪" Tab 可视化展开。
+            <strong style="color:var(--text-primary);">leader_view</strong>（一句话概览）→ <strong style="color:var(--accent-light);">ops_view</strong>（断路器状态/回退路径/trace_id）→ <strong style="color:var(--accent-cyan);">debug_view</strong>（SQL/Tool 选择详情/时间线分解）。
+            <strong>一次查询满足管理、运维、开发三个角色的信息需求。</strong>
+          </p>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -143,19 +330,19 @@
   <section class="data-copilot" id="data-copilot">
     <div class="container">
       <h2 class="section-title">Data Copilot 数据智能助手</h2>
-      <p class="section-subtitle">五阶段 NL2SQL 流水线 + 语义层驱动，让不会写 SQL 的人也能轻松查数据</p>
+      <p class="section-subtitle">MCP 预构建 Tool（主路径）→ NL2SQL 自动生成（回退）→ AI 洞察分析，让不会写 SQL 的人也能轻松查数据</p>
 
       <div class="copilot-flow">
+        <div class="flow-step">
+          <div class="flow-icon">🎯</div>
+          <div class="flow-title">MCP 路由</div>
+          <div class="flow-desc">规则判断领域+实体，匹配 15 个预构建 WMS Tool</div>
+        </div>
+        <div class="flow-arrow">→</div>
         <div class="flow-step">
           <div class="flow-icon">🔍</div>
           <div class="flow-title">Schema检索</div>
           <div class="flow-desc">BGE Embedding 语义匹配，从 7904 字段中定位相关表</div>
-        </div>
-        <div class="flow-arrow">→</div>
-        <div class="flow-step">
-          <div class="flow-icon">📝</div>
-          <div class="flow-title">SQL生成</div>
-          <div class="flow-desc">LLM 受控生成，语义层规则注入 Prompt，仅使用给定表和字段</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
@@ -166,8 +353,8 @@
         <div class="flow-arrow">→</div>
         <div class="flow-step">
           <div class="flow-icon">⚡</div>
-          <div class="flow-title">SQL执行</div>
-          <div class="flow-desc">aiomysql 异步连接池，Decimal 自动转换，异常友好提示</div>
+          <div class="flow-title">查询执行</div>
+          <div class="flow-desc">MCP Tool 调用或 aiomysql 异步连接池执行 SQL</div>
         </div>
         <div class="flow-arrow">→</div>
         <div class="flow-step">
@@ -178,41 +365,34 @@
       </div>
 
       <div class="copilot-domains">
-        <h3 class="domains-title">语义层覆盖的业务域</h3>
+        <h3 class="domains-title">MCP Tool 覆盖的业务域</h3>
         <div class="domains-grid">
-          <span class="domain-badge">📦 库存</span>
-          <span class="domain-badge">🚚 出库</span>
-          <span class="domain-badge">📥 收货/验收</span>
-          <span class="domain-badge">🧺 拣货</span>
-          <span class="domain-badge">🏍 配送</span>
-          <span class="domain-badge">📋 商品信息</span>
-          <span class="domain-badge">🏠 仓位</span>
-          <span class="domain-badge">👤 用户</span>
-          <span class="domain-badge">🔒 库存锁定</span>
-          <span class="domain-badge">⚙ 商品仓库设置</span>
+          <span class="domain-badge">📦 库存 (3 Tools)</span>
+          <span class="domain-badge">📋 商品 (3 Tools)</span>
+          <span class="domain-badge">📥 入库/收货 (3 Tools)</span>
+          <span class="domain-badge">🚚 出库/发货 (3 Tools)</span>
+          <span class="domain-badge">📊 分析/预警 (3 Tools)</span>
         </div>
       </div>
 
       <div class="copilot-example">
-        <div class="example-header">使用示例</div>
+        <div class="example-header">使用示例 — MCP 主路径</div>
         <div class="example-content">
           <div class="example-input">
             <span class="example-label">用户问题：</span>
-            <span class="example-text">"本月良品仓有哪些商品库存不足100？"</span>
+            <span class="example-text">"502620 的库存有多少？"</span>
           </div>
-          <div class="example-sql">
-            <span class="example-label">生成SQL：</span>
-            <code>SELECT s.plu_code, p.plu_name, SUM(s.stork_count) as total_stock
-FROM sto_stock_batch_yyyymm_org s
-JOIN cob_plu p ON s.plu_code = p.plu_code
-WHERE s.store_code = '01' AND p.is_active = 1
-GROUP BY s.plu_code, p.plu_name
-HAVING SUM(s.stork_count) &lt; 100
-LIMIT 100</code>
+          <div class="example-input" style="margin-top:8px;">
+            <span class="example-label">MCP 路由：</span>
+            <span class="example-text" style="color:var(--accent-cyan);">domain=inventory, entity=502620 → Tool: query_inventory_by_sku</span>
           </div>
-          <div class="example-insight">
-            <span class="example-label">AI洞察：</span>
-            <span class="example-text">当前良品仓共有 23 种商品库存低于 100，其中 5 种已接近零库存。建议优先补货：矿泉水(库存12)、纸巾(库存8)...</span>
+          <div class="example-input" style="margin-top:8px;">
+            <span class="example-label">查询结果：</span>
+            <span class="example-text">良品仓: 156 件 | 次品仓: 3 件 | 锁定库存: 0 件 | 总库存: 159 件</span>
+          </div>
+          <div class="example-input" style="margin-top:8px;">
+            <span class="example-label">执行路径：</span>
+            <span class="example-text" style="color:var(--accent-cyan);">MCP(query_inventory_by_sku)→OK &nbsp;|&nbsp; latency: 0.8s &nbsp;|&nbsp; CircuitBreaker: CLOSED</span>
           </div>
         </div>
       </div>
@@ -235,15 +415,15 @@ LIMIT 100</code>
 git clone https://github.com/gromittang/WMSRAGV2.git
 cd WMSRAGV2
 
-# 一键启动
+# 一键启动（前端 :8812 / 后端 :8912 / MCP :8922）
 docker-compose up -d</pre>
           </div>
         </div>
 
         <div class="step">
           <div class="step-number">2</div>
-          <h3 class="step-title">配置 API Key + MySQL</h3>
-          <p class="step-desc">编辑环境变量，配置 LLM API 和业务数据库</p>
+          <h3 class="step-title">配置 API Key + MySQL + MCP</h3>
+          <p class="step-desc">编辑环境变量，配置 LLM API、业务数据库和 MCP Server</p>
           <div class="code-block">
             <button class="copy-btn" onclick="copyCode(this)">📋</button>
             <pre># 编辑 backend/.env 文件
@@ -256,6 +436,12 @@ MYSQL_USER=root
 MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=wms
 
+# MCP Data Copilot 配置（Phase 2）
+MCP_ENABLED=true
+MCP_BASE_URL=http://localhost:8922
+MCP_API_KEY=gk-xxxx
+MCP_TIMEOUT=60.0
+
 # LLM Provider（可选：deepseek/openai/anthropic）
 LLM_PROVIDER=deepseek</pre>
           </div>
@@ -264,17 +450,19 @@ LLM_PROVIDER=deepseek</pre>
         <div class="step">
           <div class="step-number">3</div>
           <h3 class="step-title">访问系统</h3>
-          <p class="step-desc">打开浏览器，开始使用三大模块</p>
+          <p class="step-desc">打开浏览器，开始使用所有模块</p>
           <div class="code-block">
             <button class="copy-btn" onclick="copyCode(this)">📋</button>
             <pre># 访问前端界面
 http://localhost:8812
 
-# Data Copilot:  /query     自然语言查数据
-# 智能问答:      /chat      知识库 RAG 对话
-# PM工作室:      /pm-studio  方案设计四阶段
-# 知识库管理:    /knowledge  文档上传与索引
-# 系统设置:      /settings   模型与连接配置</pre>
+# 数据查询:     /query       MCP Tool + NL2SQL 双路径
+# 智能编排:     /orchestrator 跨模块混合管线
+# 智能问答:     /chat        知识库 RAG 对话
+# PM工作室:     /pm-studio   方案设计四阶段
+# 知识库管理:   /knowledge   文档上传与索引
+# 查询追踪:     /logs        查询追踪 Tab
+# 系统设置:     /settings    模型与连接配置</pre>
           </div>
         </div>
       </div>
@@ -285,7 +473,7 @@ http://localhost:8812
   <section class="api-section" id="api">
     <div class="container">
       <h2 class="section-title">API 参考</h2>
-      <p class="section-subtitle">核心接口前缀 /api/v1，默认端口 8812，共 12 个 Data Copilot 端点</p>
+      <p class="section-subtitle">核心接口前缀 /api/v1，默认端口 8912（前端代理），共 15+ 端点</p>
       <div class="api-table">
         <table>
           <thead>
@@ -299,7 +487,7 @@ http://localhost:8812
             <tr>
               <td><span class="method-post">POST</span></td>
               <td>/api/v1/query/</td>
-              <td>完整 NL2SQL 流水线（NL → SQL → 执行 → Insight）</td>
+              <td><strong>DataQueryGateway</strong> — MCP Tool → NL2SQL → 兜底 三级回退</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
@@ -309,7 +497,7 @@ http://localhost:8812
             <tr>
               <td><span class="method-get">GET</span></td>
               <td>/api/v1/query/schema</td>
-              <td>获取完整数据库 Schema（514 表）</td>
+              <td>获取完整数据库 Schema（514 表 / 7904 字段）</td>
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
@@ -318,43 +506,13 @@ http://localhost:8812
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
-              <td>/api/v1/query/schema/table/{name}/fields</td>
-              <td>获取表字段详情（悬浮窗展示）</td>
-            </tr>
-            <tr>
-              <td><span class="method-get">GET</span></td>
-              <td>/api/v1/query/test-connection</td>
-              <td>测试 MySQL 连接状态</td>
-            </tr>
-            <tr>
-              <td><span class="method-get">GET</span></td>
-              <td>/api/v1/query/preview/{table}</td>
-              <td>预览表数据前 N 行</td>
-            </tr>
-            <tr>
-              <td><span class="method-post">POST</span></td>
-              <td>/api/v1/query/insight</td>
-              <td>为已有查询结果重新生成 AI 分析</td>
-            </tr>
-            <tr>
-              <td><span class="method-get">GET</span></td>
               <td>/api/v1/query/history/{session_id}</td>
-              <td>获取会话查询历史</td>
+              <td>获取会话查询历史（含 trace_json 三层追踪）</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
-              <td>/api/v1/query/history/{session_id}</td>
-              <td>保存查询历史记录</td>
-            </tr>
-            <tr>
-              <td><span class="method-get">GET</span></td>
-              <td>/api/v1/docs</td>
-              <td>获取文档列表（按知识库分类）</td>
-            </tr>
-            <tr>
-              <td><span class="method-post">POST</span></td>
-              <td>/api/v1/docs/upload</td>
-              <td>上传文档（Word / PDF / TXT，最大 10MB）</td>
+              <td>/api/v1/orchestrator/query</td>
+              <td>智能编排 — Hybrid Router → Planner → Executor</td>
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
@@ -363,8 +521,38 @@ http://localhost:8812
             </tr>
             <tr>
               <td><span class="method-post">POST</span></td>
+              <td>/api/v1/docs/upload</td>
+              <td>上传文档（Word / PDF / TXT / MD，最大 10MB）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/docs/list/{page}/{size}</td>
+              <td>分页获取文档列表（按知识库过滤）</td>
+            </tr>
+            <tr>
+              <td><span class="method-post">POST</span></td>
+              <td>/api/v1/docs/knowledge</td>
+              <td>创建知识库（可选行业类型，影响分块策略）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/vector-admin/health/{kb_id}</td>
+              <td>向量库健康检查（SQL vs ChromaDB 差异）</td>
+            </tr>
+            <tr>
+              <td><span class="method-post">POST</span></td>
+              <td>/api/v1/vector-admin/rebuild/{kb_id}</td>
+              <td>重建向量索引</td>
+            </tr>
+            <tr>
+              <td><span class="method-post">POST</span></td>
               <td>/api/v1/pm-solution/sessions</td>
-              <td>创建 PM 方案会话</td>
+              <td>创建 PM 方案会话（四阶段）</td>
+            </tr>
+            <tr>
+              <td><span class="method-get">GET</span></td>
+              <td>/api/v1/logs/list</td>
+              <td>获取日志列表（含查询追踪数据）</td>
             </tr>
             <tr>
               <td><span class="method-get">GET</span></td>
@@ -381,47 +569,56 @@ http://localhost:8812
   <section class="architecture" id="architecture">
     <div class="container">
       <h2 class="section-title">系统架构</h2>
-      <p class="section-subtitle">前后端分离 + LangGraph 编排 + 多数据源协同</p>
+      <p class="section-subtitle">MCP Data Copilot + NL2SQL + RAG + Orchestrator 多数据源协同</p>
       <div class="tech-stack">
         <span class="tech-badge">FastAPI</span>
-        <span class="tech-badge">LangChain</span>
         <span class="tech-badge">LangGraph</span>
+        <span class="tech-badge">LangChain</span>
         <span class="tech-badge">LlamaIndex</span>
         <span class="tech-badge">ChromaDB</span>
         <span class="tech-badge">SQLite</span>
         <span class="tech-badge">MySQL</span>
         <span class="tech-badge">DeepSeek</span>
+        <span class="tech-badge">httpx</span>
+        <span class="tech-badge">BGE</span>
         <span class="tech-badge">Vue 3</span>
         <span class="tech-badge">Pinia</span>
         <span class="tech-badge">TailwindCSS</span>
         <span class="tech-badge">Docker</span>
+        <span class="tech-badge">MCP</span>
       </div>
       <div class="arch-diagram">
         <div class="arch-flow">
           <div class="arch-node">
-            <strong>Vue 3 前端</strong>
-            <br>Chat | Query | PM | Knowledge
+            <strong>Vue 3 前端 (:8812)</strong>
+            <br>Chat | Query | PM | Knowledge | Logs
           </div>
           <span class="arch-arrow">→</span>
           <div class="arch-node">
-            <strong>FastAPI</strong>
+            <strong>FastAPI (:8912)</strong>
             <br>/api/v1 REST + SSE
           </div>
-          <span class="arch-arrow">→</span>
-          <div class="arch-node">
-            <strong>LangGraph</strong>
-            <br>RAG 检索编排
+        </div>
+        <div class="arch-flow" style="margin-top: 20px; gap: 8px; font-size: 12px;">
+          <div class="arch-node" style="border-color:var(--accent-cyan);">
+            <strong>DataQueryGateway</strong>
+            <br>MCP → Local → Agent
           </div>
-          <span class="arch-arrow">→</span>
-          <div class="arch-node">
-            <strong>DeepSeek LLM</strong>
-            <br>生成 + 分析
+          <span class="arch-arrow">|</span>
+          <div class="arch-node" style="border-color:var(--accent-light);">
+            <strong>Orchestrator</strong>
+            <br>Router → Planner → Exec
+          </div>
+          <span class="arch-arrow">|</span>
+          <div class="arch-node" style="border-color:var(--accent-orange);">
+            <strong>RAG Service</strong>
+            <br>Rewrite → BM25+Vec → RRF
           </div>
         </div>
-        <div class="arch-flow" style="margin-top: 24px;">
+        <div class="arch-flow" style="margin-top: 20px;">
           <div class="arch-node">
-            <strong>SQLite</strong>
-            <br>元数据 + 历史
+            <strong>MCP Server</strong>
+            <br>:8922 · 15 Tools
           </div>
           <span class="arch-arrow">↔</span>
           <div class="arch-node">
@@ -435,8 +632,8 @@ http://localhost:8812
           </div>
           <span class="arch-arrow">↔</span>
           <div class="arch-node">
-            <strong>BGE Embedding</strong>
-            <br>语义检索 (7904字段)
+            <strong>BGE + Reranker</strong>
+            <br>Embedding + 精排
           </div>
         </div>
       </div>
@@ -447,8 +644,8 @@ http://localhost:8812
   <footer class="footer">
     <div class="container">
       <h3 class="footer-title">WMSRAG V2</h3>
-      <p class="footer-desc">仓库智能知识库 + Data Copilot + PM 方案工作室 — 三位一体的仓库 AI 工作台，Docker 一键部署</p>
-      <p class="footer-tech">Powered by FastAPI + LangChain + LangGraph + LlamaIndex + ChromaDB + SQLite + MySQL + DeepSeek + BGE + Vue 3 + Pinia + TailwindCSS</p>
+      <p class="footer-desc">仓库智能知识库 + MCP Data Copilot + NL2SQL + PM 方案工作室 — 四位一体的仓库 AI 工作台，Docker 一键部署</p>
+      <p class="footer-tech">Powered by FastAPI + LangGraph + LangChain + LlamaIndex + ChromaDB + SQLite + MySQL + DeepSeek + BGE + Vue 3 + Pinia + TailwindCSS + MCP 2024-11-05</p>
     </div>
   </footer>
 

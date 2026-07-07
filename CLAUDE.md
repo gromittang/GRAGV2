@@ -77,10 +77,13 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据) + MCP Server 
 | `config.py` | Pydantic Settings，自动检测前端 dist、reranker 模型路径 |
 | `logging.py` | Loguru 结构化日志，控制台彩色 + JSON lines 文件按日轮转，通过 `ContextVar` 绑定 `trace_id` |
 | `tracing.py` | 本地 trace 系统：TraceContext/Span，每个 HTTP 请求自动创建顶层 span，写入 `data/traces/` JSONL（可通过 `logs.py` API 查看） |
+| `observability.py` | 双通道可观测性：本地 TracingCallbackHandler 始终启用 + LangFuse 可选附加 |
 | `embedding.py` | BAAI/bge-small-zh-v1.5 本地加载，HF_ENDPOINT 镜像设置 |
 | `vector_store.py` | ChromaDB 客户端管理，cosine 距离，collection 命名 `kb_documents_{kb_id}` |
 | `llm_manager.py` | 多 LLM provider 支持（DeepSeek/OpenAI/Claude 可配置切换） |
 | `db_mysql.py` | aiomysql 连接池管理（Data Copilot 用） |
+| `mcp_client.py` | MCP Client — WmsMcpClient (MCP 2024-11-05 协议) + McpClientManager (连接/Tool缓存/健康检查) + CircuitBreaker，详见 `spec/components/mcp-client-architecture.md` |
+| `data_query_gateway.py` | DataQueryGateway — 数据查询唯一入口，McpExecutor→LocalExecutor→QueryAgentExecutor 三级回退链，详见 `spec/components/data-query-gateway.md` |
 | `schema_manager.py` | MySQL Schema Embedding 索引 — 从业务库提取表/字段元数据，生成 embedding 用于 NL2SQL schema 检索 |
 | `semantic_rules.py` / `semantic_layer_loader.py` | 运行时动态加载 `spec/nl2sql/semantic-layer.md` |
 | `domain_classifier.py` | NL2SQL 问题领域分类 |
@@ -114,7 +117,8 @@ SQLite (元数据: kb.db, query_history.db) + MySQL (业务数据) + MCP Server 
 
 | 目录 | 内容 |
 |------|------|
-| `spec/adr/` | 架构决策记录（RAG 设计、NL2SQL 规则、混合检索、LangGraph 迁移、本地 Tracing 等） |
+| `spec/adr/` | 架构决策记录（RAG 设计、NL2SQL 规则、混合检索、LangGraph 迁移、本地 Tracing、MCP 接入、分块策略等） |
+| `spec/components/` | 核心组件架构规范（MCP Client、Data Query Gateway） |
 | `spec/workflows/` | 各模块完整工作流 |
 | `spec/api/` | API 规范 |
 | `spec/business-rules/` | SQL 安全规则、RAG 规则 |
@@ -186,6 +190,9 @@ MCP_TIMEOUT=60.0                # 请求超时 (秒)
 2. `docs/engineering/page-regression-checklists.md`
 3. 当前激活的前端改版计划（位于 `docs/superpowers/plans/`）
 4. `docs/engineering/receipts/` 下最近一次的 phase receipt（如果存在）
+5. .claude/commands/implement-phase.md
+6. .claude/commands/review-phase.md
+7. .claude/commands/resolve-findings.md
 
 ### 前端改版执行原则
 
